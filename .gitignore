@@ -1,1 +1,5 @@
 bin
+*.db
+config.yaml
+postgres_data
+
