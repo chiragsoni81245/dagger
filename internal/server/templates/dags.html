@@ -1,32 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dagger</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="/static/css/dags.css"/>
-</head>
-<body class="font-sans bg-gray-100">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dagger</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="/static/css/dags.css"/>
+    </head>
+    <body class="font-sans bg-gray-100">
 
-  <!-- Navbar -->
-  <nav class="bg-blue-600 p-4">
-    <div class="container mx-auto flex justify-between items-center">
-      <a href="/" class="text-white text-2xl font-semibold">Dagger</a>
-      <div class="space-x-4">
-        <a href="/dags" class="text-white hover:text-gray-200">DAGs</a>
-        <a href="/executors" class="text-white hover:text-gray-200">Executors</a>
-      </div>
-    </div>
-  </nav>
+        <!-- Navbar -->
+        <nav class="bg-blue-600 p-4">
+            <div class="container mx-auto flex justify-between items-center">
+                <a href="/" class="text-white text-2xl font-semibold">Dagger</a>
+                <div class="space-x-4">
+                    <a href="/dags" class="text-white hover:text-gray-200">DAGs</a>
+                    <a href="/executors" class="text-white hover:text-gray-200">Executors</a>
+                </div>
+            </div>
+        </nav>
 
-  <!-- Main Content -->
-  <div class="container mx-auto mt-10">
-    <h2 class="text-xl font-semibold mb-4">Dags</h2>
-  </div>
+        <!-- Main Content -->
+        <div class="container mx-auto mt-10">
+            <div class="bg-white shadow-md rounded my-6">
+                <table class="min-w-full table-auto">
+                    <thead>
+                        <tr class="bg-gray-600 text-white uppercase text-sm leading-normal">
+                            <th class="py-3 px-6 text-left">ID</th>
+                            <th class="py-3 px-6 text-left">Name</th>
+                            <th class="py-3 px-6 text-left">Status</th>
+                            <th class="py-3 px-6 text-left">Pending Tasks</th>
+                            <th class="py-3 px-6 text-left">Completed Tasks</th>
+                            <th class="py-3 px-6 text-left">Inprogress Tasks</th>
+                            <th class="py-3 px-6 text-left">Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dags" class="text-gray-600 text-sm font-light">
+                        <!-- Table rows will be injected here -->
+                    </tbody>
+                </table>
+                <div class="flex justify-center items-center px-5 py-3 bg-gray-100 border-t">
+                    <button id="prev-btn" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Previous</button>
+                    <span id="pagination-info" class="text-gray-600"></span>
+                    <button id="next-btn" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Next</button>
+                </div>
+            </div>
+        </div>
 
-  <script src="/static/js/dags.js"></script>
-</body>
+        <script src="/static/js/common.js"></script>
+        <script src="/static/js/dags.js"></script>
+    </body>
 </html>
 
 

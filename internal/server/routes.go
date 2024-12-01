@@ -6,32 +6,35 @@ import (
 
 func SetupRoutes(r *gin.Engine) {
     // UI Routes
+    ui := UIControllers{}
     {
-        r.GET("/", Dashboard)
-        r.GET("/dags", Dags)
-        r.GET("/executors", Executors)
+        r.GET("/", ui.Dashboard)
+        r.GET("/dags", ui.Dags)
+        r.GET("/dags/:id", ui.Dag)
+        r.GET("/executors", ui.Executors)
     }
 
 	// Group routes under /api/v1
 	v1 := r.Group("/api/v1")
+    api := APIControllers{}
 	{
 		// DAG routes
-		v1.GET("/dags", GetDags)
-		v1.POST("/dags", CreateDag)
-		v1.GET("/dags/:id", GetDagByID)
-		v1.DELETE("/dags/:id", DeleteDag)
+		v1.GET("/dags", api.GetDags)
+		v1.POST("/dags", api.CreateDag)
+		v1.GET("/dags/:id", api.GetDagByID)
+        v1.GET("/dags/:id/tasks", api.GetTasksByDagID)
+		v1.DELETE("/dags/:id", api.DeleteDag)
 
         // Task routes
-        v1.GET("/tasks", GetTasks)
-        v1.POST("/tasks", CreateTask)
-        v1.GET("/tasks/:id", GetTaskByID)
-        v1.DELETE("/tasks/:id", DeleteTask)
+        v1.POST("/tasks", api.CreateTask)
+        v1.GET("/tasks/:id", api.GetTaskByID)
+        v1.DELETE("/tasks/:id", api.DeleteTask)
 
         // Executor routes
-        v1.GET("/executor", GetExecutors)
-        v1.POST("/executor", CreateExecutor)
-        v1.GET("/executor/:id", GetExecutorByID)
-        v1.DELETE("/executor/:id", DeleteExecutor)
+        v1.GET("/executor", api.GetExecutors)
+        v1.POST("/executor", api.CreateExecutor)
+        v1.GET("/executor/:id", api.GetExecutorByID)
+        v1.DELETE("/executor/:id", api.DeleteExecutor)
 	}
 }
 

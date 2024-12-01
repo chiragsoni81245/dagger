@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <title>Error</title>
+
+        <!-- Tailwind CSS (via CDN) -->
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    </head>
+
+    <body class="bg-gray-100 text-gray-900 flex items-center justify-center min-h-screen">
+        <div class="text-center">
+            <h1 class="text-6xl font-bold text-yellow-600">{{ .StatusCode }}</h1>
+            <p class="text-2xl mt-4">{{ .Message }}</p>
+            <p class="mt-2 text-lg text-gray-600">Something went wrong on our end. Please try again later.</p>
+
+            <!-- Optional Retry Link -->
+            <a href="/" class="mt-4 inline-block text-blue-300 hover:underline">Go back to homepage</a>
+        </div>
+    </body>
+</html>
+

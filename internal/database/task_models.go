@@ -13,7 +13,7 @@ type Task struct {
 	ParentID    *int   `json:"parent_id"` // Nullable
 	ExecutorID  int    `json:"executor_id"`
 	Type        string `json:"type"`
-	Definition  string `json:"definition"` // Storing as string for JSONB
+	definition  string
 	CreatedAt   string `json:"created_at"`
 }
 
@@ -22,12 +22,13 @@ type TaskOperations struct {
     DB     *sql.DB
 }
 
-func (to *TaskOperations) GetTasks(page int, perPage int) ([]Task, error) {
+func (to *TaskOperations) GetTasksByDagID(id int) ([]Task, error) {
 	rows, err := to.DB.Query(`
 		SELECT id, dag_id, status, parent_id, executor_id, type, definition, created_at
 		FROM task
+        WHERE id=$1
 		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2`, perPage, (page-1)*perPage)
+    `, id)
 	if err != nil {
 		to.Logger.Error("Error fetching tasks:", err)
 		return nil, err
@@ -37,7 +38,7 @@ func (to *TaskOperations) GetTasks(page int, perPage int) ([]Task, error) {
 	var tasks []Task
 	for rows.Next() {
 		var task Task
-		if err := rows.Scan(&task.ID, &task.DagID, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.Definition, &task.CreatedAt); err != nil {
+		if err := rows.Scan(&task.ID, &task.DagID, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.definition, &task.CreatedAt); err != nil {
 			to.Logger.Error("Error scanning task:", err)
 			return nil, err
 		}
@@ -81,7 +82,7 @@ func (to *TaskOperations) GetTaskByID(id int) (*Task, error) {
 	err := to.DB.QueryRow(`
 		SELECT id, dag_id, status, parent_id, executor_id, type, definition, created_at
 		FROM task
-		WHERE id = $1`, id).Scan(&task.ID, &task.DagID, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.Definition, &task.CreatedAt)
+		WHERE id = $1`, id).Scan(&task.ID, &task.DagID, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.definition, &task.CreatedAt)
 
 	if err != nil {
 		to.Logger.Error("Error fetching task:", err)

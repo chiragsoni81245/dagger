@@ -15,10 +15,12 @@ import (
 )
 
 
+type APIControllers struct {}
+
 // --------------------------------------------------------------------------------------------------
 // --------------------------- For Dags -------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
-func GetDags(c *gin.Context) {
+func (apiC *APIControllers) GetDags(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     do := database.DagOperations{Logger: logger, DB: db}
@@ -26,16 +28,16 @@ func GetDags(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 
-	dags, err := do.GetDags(page, perPage)
+	dags, total_dags, err := do.GetDags(page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dags"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"dags": dags})
+    c.JSON(http.StatusOK, gin.H{"dags": dags, "total_dags": total_dags})
 }
 
-func GetDagByID(c *gin.Context) {
+func (apiC *APIControllers) GetDagByID(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     do := database.DagOperations{Logger: logger, DB: db}
@@ -55,7 +57,7 @@ func GetDagByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"dag": *dag})
 }
 
-func CreateDag(c *gin.Context) {
+func (apiC *APIControllers) CreateDag(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     do := database.DagOperations{Logger: logger, DB: db}
@@ -78,7 +80,7 @@ func CreateDag(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func DeleteDag(c *gin.Context) {
+func (apiC *APIControllers) DeleteDag(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     do := database.DagOperations{Logger: logger, DB: db}
@@ -101,24 +103,7 @@ func DeleteDag(c *gin.Context) {
 // --------------------------------------------------------------------------------------------------
 // --------------------------- For Tasks ------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
-func GetTasks(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
-    to := database.TaskOperations{Logger: logger, DB: db}
-
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	perPage, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
-
-	dags, err := to.GetTasks(page, perPage)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get tasks"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"tasks": dags})
-}
-
-func GetTaskByID(c *gin.Context) {
+func (apiC *APIControllers) GetTasksByDagID(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     to := database.TaskOperations{Logger: logger, DB: db}
@@ -129,16 +114,36 @@ func GetTaskByID(c *gin.Context) {
 		return
 	}
 
-	dag, err := to.GetTaskByID(id)
+	tasks, err := to.GetTasksByDagID(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dag"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get tasks"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"task": *dag})
+	c.JSON(http.StatusOK, gin.H{"tasks": tasks})
 }
 
-func CreateTask(c *gin.Context) {
+func (apiC *APIControllers) GetTaskByID(c *gin.Context) {
+    logger := c.MustGet("logger").(*logrus.Logger)
+    db := c.MustGet("db").(*sql.DB)
+    to := database.TaskOperations{Logger: logger, DB: db}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	task, err := to.GetTaskByID(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get task"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"task": *task})
+}
+
+func (apiC *APIControllers) CreateTask(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     to := database.TaskOperations{Logger: logger, DB: db}
@@ -223,7 +228,7 @@ func CreateTask(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func DeleteTask(c *gin.Context) {
+func (apiC *APIControllers) DeleteTask(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     to := database.TaskOperations{Logger: logger, DB: db}
@@ -251,7 +256,7 @@ func DeleteTask(c *gin.Context) {
 // --------------------------------------------------------------------------------------------------
 // --------------------------- For Executors --------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
-func GetExecutors(c *gin.Context) {
+func (apiC *APIControllers) GetExecutors(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     to := database.ExecutorOperations{Logger: logger, DB: db}
@@ -268,7 +273,7 @@ func GetExecutors(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"dags": dags})
 }
 
-func GetExecutorByID(c *gin.Context) {
+func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     to := database.ExecutorOperations{Logger: logger, DB: db}
@@ -288,7 +293,7 @@ func GetExecutorByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"dag": *dag})
 }
 
-func CreateExecutor(c *gin.Context) {
+func (apiC *APIControllers) CreateExecutor(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     to := database.ExecutorOperations{Logger: logger, DB: db}
@@ -313,7 +318,7 @@ func CreateExecutor(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": id})
 }
 
-func DeleteExecutor(c *gin.Context) {
+func (apiC *APIControllers) DeleteExecutor(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
     to := database.ExecutorOperations{Logger: logger, DB: db}
