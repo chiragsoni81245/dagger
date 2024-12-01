@@ -7,7 +7,7 @@
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="stylesheet" href="/static/css/dags.css"/>
     </head>
-    <body class="font-sans bg-gray-100">
+    <body class="font-sans">
 
         <!-- Navbar -->
         <nav class="bg-blue-600 p-4">
@@ -22,7 +22,8 @@
 
         <!-- Main Content -->
         <div class="container mx-auto mt-10">
-            <div class="bg-white shadow-md rounded my-6">
+            <h2 id="no-result-found" class="text-center hidden">No executor available</h2>
+            <div id="result-found" class="bg-white shadow-md rounded my-6">
                 <table class="min-w-full table-auto">
                     <thead>
                         <tr class="bg-gray-600 text-white uppercase text-sm leading-normal">
@@ -39,7 +40,7 @@
                         <!-- Table rows will be injected here -->
                     </tbody>
                 </table>
-                <div class="flex justify-center items-center px-5 py-3 bg-gray-100 border-t">
+                <div id="pagination-control" class="flex justify-center items-center px-5 py-3 bg-gray-100 border-t">
                     <button id="prev-btn" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Previous</button>
                     <span id="pagination-info" class="text-gray-600"></span>
                     <button id="next-btn" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Next</button>

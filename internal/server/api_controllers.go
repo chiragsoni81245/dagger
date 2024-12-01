@@ -259,18 +259,18 @@ func (apiC *APIControllers) DeleteTask(c *gin.Context) {
 func (apiC *APIControllers) GetExecutors(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.ExecutorOperations{Logger: logger, DB: db}
+    eo := database.ExecutorOperations{Logger: logger, DB: db}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 
-	dags, err := to.GetExecutors(page, perPage)
+	executors, total_executors, err := eo.GetExecutors(page, perPage)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dags"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get executors"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"dags": dags})
+    c.JSON(http.StatusOK, gin.H{"executors": executors, "total_executors": total_executors})
 }
 
 func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
@@ -284,13 +284,13 @@ func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
 		return
 	}
 
-	dag, err := to.GetExecutorByID(id)
+	executor, err := to.GetExecutorByID(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dag"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"dag": *dag})
+	c.JSON(http.StatusOK, gin.H{"executor": *executor})
 }
 
 func (apiC *APIControllers) CreateExecutor(c *gin.Context) {

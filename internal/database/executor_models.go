@@ -9,7 +9,8 @@ import (
 type Executor struct {
 	ID        int    `json:"id"`
 	Type      string `json:"type"`
-	Config    string `json:"config"` // Storing as string for JSONB
+    Name      string `json:"name"`
+	config    string
 	CreatedAt string `json:"created_at"`
 }
 
@@ -18,28 +19,35 @@ type ExecutorOperations struct {
     DB     *sql.DB
 }
 
-func (eo *ExecutorOperations) GetExecutors(page int, perPage int) ([]Executor, error) {
+func (eo *ExecutorOperations) GetExecutors(page int, perPage int) ([]Executor, int, error) {
+    var total_executors int;
+    total_query_row := eo.DB.QueryRow(`
+        SELECT count(*)
+        FROM executor
+    `)
+    total_query_row.Scan(&total_executors)
+
 	rows, err := eo.DB.Query(`
-		SELECT id, type, config, created_at
+		SELECT id, type, name, config, created_at
 		FROM executor
 		ORDER BY created_at DESC
 		LIMIT $1 OFFSET $2`, perPage, (page-1)*perPage)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
 	var executors []Executor
 	for rows.Next() {
 		var executor Executor
-		if err := rows.Scan(&executor.ID, &executor.Type, &executor.Config, &executor.CreatedAt); err != nil {
+		if err := rows.Scan(&executor.ID, &executor.Type, &executor.Name, &executor.config, &executor.CreatedAt); err != nil {
 			eo.Logger.Error("Error scanning executor:", err)
-			return nil, err
+			return nil, 0, err
 		}
 		executors = append(executors, executor)
 	}
 
-	return executors, nil
+	return executors, total_executors, nil
 }
 
 func (eo *ExecutorOperations) CreateExecutor(name string, executorType string, config string) (int, error) {
@@ -66,7 +74,7 @@ func (eo *ExecutorOperations) GetExecutorByID(id int) (*Executor, error) {
 	err := eo.DB.QueryRow(`
 		SELECT id, type, config, created_at
 		FROM executor
-		WHERE id = $1`, id).Scan(&executor.ID, &executor.Type, &executor.Config, &executor.CreatedAt)
+		WHERE id = $1`, id).Scan(&executor.ID, &executor.Type, &executor.config, &executor.CreatedAt)
 
 	if err != nil {
 		eo.Logger.Error("Error fetching executor by ID:", err)

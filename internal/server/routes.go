@@ -31,10 +31,10 @@ func SetupRoutes(r *gin.Engine) {
         v1.DELETE("/tasks/:id", api.DeleteTask)
 
         // Executor routes
-        v1.GET("/executor", api.GetExecutors)
-        v1.POST("/executor", api.CreateExecutor)
-        v1.GET("/executor/:id", api.GetExecutorByID)
-        v1.DELETE("/executor/:id", api.DeleteExecutor)
+        v1.GET("/executors", api.GetExecutors)
+        v1.POST("/executors", api.CreateExecutor)
+        v1.GET("/executors/:id", api.GetExecutorByID)
+        v1.DELETE("/executors/:id", api.DeleteExecutor)
 	}
 }
 

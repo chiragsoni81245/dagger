@@ -15,6 +15,11 @@ async function main() {
 function renderTable({ dags, total_dags }) {
     const tableBody = document.getElementById("dags");
     tableBody.innerHTML = "";
+    if (dags == null) {
+        document.getElementById("result-found").classList.add("hidden");
+        document.getElementById("no-result-found").classList.remove("hidden");
+        return;
+    }
 
     dags.forEach((row) => {
         const tr = document.createElement("tr");

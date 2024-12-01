@@ -1,1 +1,1 @@
-BASE_API_URL = "/api/v1";
+const BASE_API_URL = "/api/v1";
