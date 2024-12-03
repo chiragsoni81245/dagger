@@ -26,7 +26,7 @@
                 <h2 class="text-center mb-3">No executor available</h2>
                 <button class="add-executor bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 w-[20%]">Add Executor</button>
             </div>
-            <div id="result-found" class="flex flex-col bg-white shadow-md rounded my-6">
+            <div id="result-found" class="flex flex-col bg-white shadow-md rounded my-6 hidden">
                 <button class="add-executor bg-blue-500 text-white px-3 py-1 m-2 ml-auto rounded hover:bg-blue-600 w-[20%]">Add Executor</button>
                 <table class="min-w-full table-auto">
                     <thead>
@@ -52,14 +52,14 @@
         <!--Form Modal -->
         <div id="executor-form-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
             <div class="bg-white rounded-lg shadow-lg w-9/12 p-6 relative">
-                <h2 id="executor-form-title" class="text-2xl font-semibold text-gray-800 mb-4">Add Task</h2>
+                <h2 id="executor-form-title" class="text-2xl font-semibold text-gray-800 mb-4">Add Executor</h2>
                 <form>
                     <div class="mb-4">
                         <label for="name" class="block text-sm font-medium text-gray-700">Name*</label>
                         <input id="executor-name" type="text" name="name" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                     <div class="mb-4">
-                        <label for="message" class="block text-sm font-medium text-gray-700">Type*</label>
+                        <label for="type" class="block text-sm font-medium text-gray-700">Type*</label>
                         <select id="executor-type" name="type" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="" disabled selected>Select a type</option>
                             <option value="docker">Docker</option>
@@ -76,6 +76,9 @@
                 </form>
             </div>
         </div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="fixed bottom-4 right-4 space-y-4 z-50"></div>
 
         <script src="/static/js/common.js"></script>
         <script src="/static/js/executors.js"></script>

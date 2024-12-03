@@ -86,6 +86,9 @@ function renderTable({ executors, total_executors }) {
         document.getElementById("result-found").classList.add("hidden");
         document.getElementById("no-result-found").classList.remove("hidden");
         return;
+    } else {
+        document.getElementById("result-found").classList.remove("hidden");
+        document.getElementById("no-result-found").classList.add("hidden");
     }
 
     executors.forEach((row) => {

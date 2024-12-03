@@ -19,6 +19,7 @@ CREATE TABLE executor (
 CREATE TABLE task (
     id SERIAL PRIMARY KEY,
     dag_id INT REFERENCES dag(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'created',
     parent_id INT REFERENCES task(id) ON DELETE SET NULL,
     executor_id INT REFERENCES executor(id) ON DELETE RESTRICT,

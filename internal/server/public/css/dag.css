@@ -6,6 +6,8 @@
 }
 .task {
     position: absolute;
+    display: flex;
+    flex-direction: column;
     background-color: #3498db;
     color: white;
     text-align: center;
@@ -13,6 +15,10 @@
     font-family: Arial, sans-serif;
     font-size: 14px;
     cursor: pointer;
+}
+.task img {
+    width: 30px;
+    height: 30px;
 }
 svg {
     position: absolute;

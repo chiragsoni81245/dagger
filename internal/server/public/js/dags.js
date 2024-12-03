@@ -12,6 +12,49 @@ async function main() {
     renderTable(await getDags());
 }
 
+async function submitDag() {
+    const DAG_FORM_MODAL = document.getElementById("dag-form-modal");
+    let data = {};
+
+    for (let input of DAG_FORM_MODAL.getElementsByTagName("input")) {
+        if (!input.reportValidity()) return;
+        let name = input.getAttribute("name");
+        data[name] = input.value;
+    }
+
+    let response = await fetch(`${BASE_API_URL}/dags`, {
+        method: "POST",
+        headers: { ContentType: "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (response.status != 201) {
+        // Show error
+        return;
+    }
+    // Show message
+    closeDagForm();
+    renderTable(await getDags());
+}
+
+async function renderAddDagForm() {
+    const DAG_FORM_MODAL = document.getElementById("dag-form-modal");
+
+    // Reset All Field Values
+    for (let input of DAG_FORM_MODAL.getElementsByTagName("input")) {
+        input.value = "";
+    }
+
+    // Set Title
+    document.getElementById("dag-form-title").textContent = "Add Dag";
+
+    DAG_FORM_MODAL.classList.remove("hidden");
+}
+
+function closeDagForm() {
+    const DAG_FORM_MODAL = document.getElementById("dag-form-modal");
+    DAG_FORM_MODAL.classList.add("hidden");
+}
+
 function renderTable({ dags, total_dags }) {
     const tableBody = document.getElementById("dags");
     tableBody.innerHTML = "";
@@ -19,6 +62,9 @@ function renderTable({ dags, total_dags }) {
         document.getElementById("result-found").classList.add("hidden");
         document.getElementById("no-result-found").classList.remove("hidden");
         return;
+    } else {
+        document.getElementById("result-found").classList.remove("hidden");
+        document.getElementById("no-result-found").classList.add("hidden");
     }
 
     dags.forEach((row) => {
@@ -78,5 +124,15 @@ document.getElementById("next-btn").addEventListener("click", async () => {
         renderTable(await getDags());
     }
 });
+
+document
+    .getElementById("cancel-dag-form")
+    .addEventListener("click", closeDagForm);
+
+document
+    .querySelectorAll("button.add-dag")
+    .forEach((ele) => ele.addEventListener("click", renderAddDagForm));
+
+document.getElementById("submit-dag-form").addEventListener("click", submitDag);
 
 main();

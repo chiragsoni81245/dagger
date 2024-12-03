@@ -6,6 +6,7 @@
         <title>Dagger</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link rel="stylesheet" href="/static/css/dag.css"/>
+        <link rel="stylesheet" href="/static/css/font-awesome.min.css"/>
     </head>
     <body class="font-sans">
         <input type="hidden" id="dag-id" value="{{ .ID }}" />
@@ -52,7 +53,7 @@
                     <div id="taks-definition-block">
                         <div class="mb-4">
                             <label for="codeFilesZip" class="block text-sm font-medium text-gray-700">Upload Code Zip*</label>
-                            <input type="file" id="code-fiels-zip" name="codeFilesZip" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <input type="file" id="code-files-zip" name="code_files_zip" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
                         <div class="mb-4">
                             <label for="command" class="block text-sm font-medium text-gray-700">Init Command</label>
@@ -66,6 +67,9 @@
                 </form>
             </div>
         </div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" class="fixed bottom-4 right-4 space-y-4 z-50"></div>
 
         <script src="/static/js/common.js"></script>
         <script src="/static/js/dag.js"></script>

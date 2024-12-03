@@ -2,7 +2,6 @@ package server
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -50,6 +49,10 @@ func (apiC *APIControllers) GetDagByID(c *gin.Context) {
 
 	dag, err := do.GetDagByID(id)
 	if err != nil {
+        if err == sql.ErrNoRows {
+		    c.JSON(http.StatusNotFound, gin.H{"error": "Invalid ID"})
+		    return
+        }
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dag"})
 		return
 	}
@@ -116,6 +119,10 @@ func (apiC *APIControllers) GetTasksByDagID(c *gin.Context) {
 
 	tasks, err := to.GetTasksByDagID(id)
 	if err != nil {
+        if err == sql.ErrNoRows {
+		    c.JSON(http.StatusNotFound, gin.H{"error": "Invalid ID"})
+		    return
+        }
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get tasks"})
 		return
 	}
@@ -136,6 +143,10 @@ func (apiC *APIControllers) GetTaskByID(c *gin.Context) {
 
 	task, err := to.GetTaskByID(id)
 	if err != nil {
+        if err == sql.ErrNoRows {
+		    c.JSON(http.StatusNotFound, gin.H{"error": "Invalid ID"})
+		    return
+        }
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get task"})
 		return
 	}
@@ -151,55 +162,61 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
 	var input struct {
         DagId int `json:"dag_id"`
         ExecutorID int `json:"executor_id"`
+        ParentID *int `json:"parent_id"`
+        Name string `json:"name"`
         Type string `json:"type"`
-        Definition string `json:"definition"`
-        ParentID int `json:"parent_id"`
+        Command string `json:"command"`
 	}
 
-    // Validate Definition
-    var goTaskDefinition struct {
-        Version string `json:"version"`
-        Command string `json:"command"`
-    }
-    var pythonTaskDefinition struct {
-        Version string `json:"version"`
-        Command string `json:"command"`
-    }
-    var dockerTaskDefinition struct {
-        Command string `json:"command"`
-    }
-
-    if err := json.Unmarshal([]byte(input.Definition), &goTaskDefinition); err != nil {
-        if err := json.Unmarshal([]byte(input.Definition), &pythonTaskDefinition); err != nil {
-            if err := json.Unmarshal([]byte(input.Definition), &dockerTaskDefinition); err != nil {
-		        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid task definition"})
-                return 
-            }
-        }
-    }
-
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+    var err error;
+	input.DagId, err = strconv.Atoi(c.PostForm("dag_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid dag id"})
 		return
 	}
+	input.ExecutorID, err = strconv.Atoi(c.PostForm("executor_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid executor id"})
+		return
+	}
+    input.Type = c.PostForm("type")
+    input.Name = c.PostForm("name")
+    parentId := c.PostForm("parent_id")
+    if parentId != "null" {
+        parentIdInt, err := strconv.Atoi(parentId)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid parent id"})
+            return
+        }
+        input.ParentID = &parentIdInt
+    }
 
-	id, txn, err := to.CreateTask(input.DagId, input.ExecutorID, input.Type, input.Definition, input.ParentID)
+    codeFilesZip, err := c.FormFile("code_files_zip")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input, code files zip missing"})
+		return
+	}
+    
+    var definition string = "{}";
+    if input.Command != "" {
+        definition = fmt.Sprintf("{\"initCommand\": \"%s\"}", input.Command)
+    } 
+
+	id, txn, err := to.CreateTask(input.DagId, input.ExecutorID, input.Name, input.Type, definition, input.ParentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
 	}
 
-    codeZipFile, _ := c.FormFile("code_zip_file")
-
     // Validate File Type
-    fileExt := filepath.Ext(codeZipFile.Filename)
-    if fileExt != "zip" {
+    fileExt := filepath.Ext(codeFilesZip.Filename)
+    if fileExt != ".zip" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid code files extension, we only support zip"})
 		return
     }
 
     // Store Code Zip file in that task's specific directory
-    taskDir := fmt.Sprintf("storage/code-zip-files/%d", id)
+    taskDir := fmt.Sprintf("storage/code-files-zip/%d", id)
     err = os.MkdirAll(taskDir, 0755)
     if err != nil {
         err = txn.Rollback()
@@ -209,7 +226,7 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
     }
-    err = c.SaveUploadedFile(codeZipFile, taskDir+"/code.tar")
+    err = c.SaveUploadedFile(codeFilesZip, taskDir+"/code.zip")
     if err != nil {
         err = txn.Rollback()
         if err != nil {
@@ -280,6 +297,10 @@ func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
+        if err == sql.ErrNoRows {
+		    c.JSON(http.StatusNotFound, gin.H{"error": "Invalid ID"})
+		    return
+        }
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
