@@ -1,6 +1,5 @@
 #dag-container {
     position: relative;
-    height: 600px !important;
     margin: 2.5%;
     overflow: auto;
 }
@@ -8,26 +7,29 @@
     position: absolute;
     display: flex;
     flex-direction: column;
-    background-color: #3498db;
-    color: white;
+    min-width: 150px;
     text-align: center;
     line-height: 40px;
     font-family: Arial, sans-serif;
-    font-size: 14px;
     cursor: pointer;
+    padding: 0 5px 8px 5px;
+}
+.task p {
+    font-size: 16px;
+    font-weight: bold;
 }
 .task img {
-    width: 30px;
-    height: 30px;
+    width: 25px;
+    height: 25px;
 }
-svg {
+svg.arrow {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    z-index: -10;
 }
-line {
-    stroke: #999;
+svg.arrow line {
+    stroke: #000;
     stroke-width: 2;
+}
+svg.arrow polygon {
+    fill: #000;
 }

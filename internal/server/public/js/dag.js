@@ -91,6 +91,80 @@ function closeTaskForm() {
     TASK_FORM_MODAL.classList.add("hidden");
 }
 
+function getTaskNode(task, level, prevTaskId) {
+    const parent = document.getElementById(`task-${task.parent_id}`);
+    const prevTask = document.getElementById(`task-${prevTaskId}`);
+    let [left, top] = [MARGIN_IN_TASKS, MARGIN_IN_TASKS];
+    if (parent) {
+        left += parent.offsetWidth + parent.offsetLeft;
+        if (prevTask) {
+            top += prevTask.offsetHeight + prevTask.offsetTop;
+        } else {
+            top += parent.offsetHeight + parent.offsetTop;
+        }
+    }
+
+    return getTemplateToElement(`
+        <div 
+            id="task-${task.id}" 
+            class="task bg-blue-500 text-white justify-center" 
+            data-level="${level}" 
+            style="left: ${left}px; top: ${top}px"
+        >
+            <div class="flex flex-row justify-start items-center">
+                <img src="/static/images/${task.type}-icon.png"/>
+                <p class="">${task.name}</p>
+            </div>
+            <div class="flex flex-row justify-between items-end px-1">
+                ${
+                    task.status == "processing"
+                        ? `<div class="flex items-center justify-center">
+                        <div class="w-4 h-4 border-2 border-grey-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>`
+                        : `<i class="fa fa-play-circle-o" aria-hidden="true"></i>`
+                }
+                <div class="flex items-end mx-1">
+                    <button class="delete-task flex text-red-500 text-base hover:text-red-700 focus:outline-none">
+                        <i class="fa fa-trash" aria-hidden="true"></i>
+                    </button>
+                    <button class="add-task flex ml-4 text-white text-base hover:text-gray-300 focus:outline-none" data-parent_id="${task.id}">
+                        <i class="fa fa-plus" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+function drawArrowBetweenTwoTasks(parentTaskId, childTaskId) {
+    const parent = document.getElementById(`task-${parentTaskId}`);
+    const child = document.getElementById(`task-${childTaskId}`);
+    console.log({ parent, child });
+    if (!parent || !child) return;
+    let startPoint = {
+        left: parent.offsetLeft + parent.offsetWidth / 2,
+        top: parent.offsetTop + parent.offsetHeight,
+    };
+    let endPoint = {
+        left: child.offsetLeft,
+        top: child.offsetTop + child.offsetHeight / 2,
+    };
+    const arrowHeadWidth = 12;
+    const arrowHeadHeight = 6;
+    const arrow = getTemplateToElement(`
+        <svg class="arrow" width="${DAG_CONTAINER.scrollWidth}" height="${DAG_CONTAINER.scrollHeight}">
+            <!-- First line -->
+            <line x1="${startPoint.left}" y1="${startPoint.top}" x2="${startPoint.left}" y2="${endPoint.top}" />
+            <!-- Second line -->
+            <line x1="${startPoint.left}" y1="${endPoint.top}" x2="${endPoint.left}" y2="${endPoint.top}" />
+            <!-- Arrowhead -->
+            <polygon points="${endPoint.left},${endPoint.top} ${endPoint.left - arrowHeadWidth},${endPoint.top - arrowHeadHeight} ${endPoint.left - arrowHeadWidth},${endPoint.top + arrowHeadHeight}" />
+        </svg>
+    `);
+
+    DAG_CONTAINER.appendChild(arrow);
+}
+
 async function renderDag(dag) {
     if (!dag) return;
     if (dag.tasks == null) {
@@ -111,46 +185,41 @@ async function renderDag(dag) {
         tasks[task.id] = task;
         if (task.parent_id == null) {
             root = task.id;
-            graph[task.id] = [];
+            graph[task.id] = graph[task.id] || [];
         } else if (graph.hasOwnProperty(task.parent_id)) {
             graph[task.parent_id].push(task.id);
         } else {
             graph[task.parent_id] = [task.id];
         }
     }
-    console.log(graph);
 
     // Clear DAG Container
     DAG_CONTAINER.innerHTML = "";
 
     // BFS Rendering
-    q = new Queue();
-    q.enqueue(root);
+    q = [];
+    q.push({ node: root, level: 1 });
+    let prevTaskId;
 
-    while (q.size()) {
-        let current = q.dequeue();
+    while (q.length > 0) {
+        let { node: current, level } = q.pop();
 
         // Render Task
         const task = tasks[current];
-        console.log(task);
-        const taskNode = getTemplateToElement(`
-            <div id="task-${task.id}" class="task justify-center items-center p-2" style="left: ${MARGIN_IN_TASKS}; top: ${MARGIN_IN_TASKS}">
-                <div class="flex flex-row justify-center items-center">
-                    <img src="/static/images/${task.type}-icon.png"/>
-                    <p>${task.name}</p>
-                </div>
-                <div class="flex flex-row justify-center items-center">
-                    <svg class="animate-spin h-5 w-5 mr-3 ..." viewBox="0 0 24 24"></svg>
-                    <button class="delete-task text-red-500 hover:text-red-700 focus:outline-none">
-                        <i class="fa fa-trash" aria-hidden="true"></i>
-                    </button>
-                </div>
-            </div>
-        `);
+        const taskNode = getTaskNode(task, level, prevTaskId);
         DAG_CONTAINER.appendChild(taskNode);
+        document
+            .querySelector(`div#task-${task.id} button.add-task`)
+            .addEventListener("click", renderAddTaskForm);
 
-        for (let child of graph[current]) {
-            q.enqueue(child);
+        prevTaskId = task.id;
+
+        drawArrowBetweenTwoTasks(task.parent_id, task.id);
+
+        if (!graph[current]) continue;
+        for (let i = 0; i < graph[current].length; i++) {
+            const child = graph[current][i];
+            q.push({ node: child, level: level + 1 });
         }
     }
 }
