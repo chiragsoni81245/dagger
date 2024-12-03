@@ -28,10 +28,11 @@ async function submitDag() {
         body: JSON.stringify(data),
     });
     if (response.status != 201) {
-        // Show error
+        const { error } = await response.json();
+        showToast(error, "error");
         return;
     }
-    // Show message
+    showToast("DAG created successfully");
     closeDagForm();
     renderTable(await getDags());
 }

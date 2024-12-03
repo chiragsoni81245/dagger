@@ -33,7 +33,7 @@ async function submitExecutor() {
             try {
                 JSON.parse(input.value);
             } catch {
-                // Show error
+                showToast("Invalid json in config", "error");
                 return;
             }
         }
@@ -46,10 +46,11 @@ async function submitExecutor() {
         body: JSON.stringify(data),
     });
     if (response.status != 201) {
-        // Show error
+        const { error } = await response.json();
+        showToast(error, "error");
         return;
     }
-    // Show message
+    showToast("Executor created successfully");
     closeExecutorForm();
     renderTable(await getExecutors());
 }

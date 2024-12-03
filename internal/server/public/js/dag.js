@@ -34,10 +34,11 @@ async function submitTask() {
         body: formData,
     });
     if (response.status != 201) {
-        // Show error
+        const { error } = await response.json();
+        showToast(error, "error");
         return;
     }
-    // Show message
+    showToast("Task created successfully");
     closeTaskForm();
     renderDag(await getDag());
 }
@@ -48,8 +49,7 @@ async function renderAddTaskForm() {
     TASK_FORM_MODAL.dataset["parent_id"] = parent_id;
     const executors = await getExecutors();
     if (executors == null) {
-        // Show error
-        console.log("No executors found, so not opening add task form!");
+        showToast("No executors found, so not opening add task form!", "error");
         return;
     }
 
