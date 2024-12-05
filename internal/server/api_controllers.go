@@ -185,6 +185,7 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
 	}
     input.Type = c.PostForm("type")
     input.Name = c.PostForm("name")
+    input.Command = c.PostForm("command")
     parentId := c.PostForm("parent_id")
     if parentId != "null" {
         parentIdInt, err := strconv.Atoi(parentId)
