@@ -1,5 +1,6 @@
 const DAG_CONTAINER = document.getElementById("dag-container");
 const MARGIN_IN_TASKS = 10;
+let DAG;
 const DAG_ID = parseInt(document.getElementById("dag-id").value);
 const NAV = document.getElementsByTagName("nav")[0];
 
@@ -40,6 +41,23 @@ async function submitTask() {
     }
     showToast("Task created successfully");
     closeTaskForm();
+    renderDag(await getDag());
+}
+
+async function deleteTask() {
+    const taskId = parseInt(this.dataset["taskId"]);
+    const taskName = this.dataset["taskName"];
+    // Take confirmation
+    if (!confirm(`Are you sure you want to delete '${taskName}' task`)) return;
+    const response = await fetch(`${BASE_API_URL}/tasks/${taskId}`, {
+        method: "DELETE",
+    });
+    if (response.status != 200) {
+        const { error } = await response.json();
+        showToast(error, "error");
+        return;
+    }
+    showToast("Task deleted successfully");
     renderDag(await getDag());
 }
 
@@ -117,20 +135,29 @@ function getTaskNode(task, level, prevTaskId) {
             </div>
             <div class="flex flex-row justify-between items-end px-1">
                 ${
-                    task.status == "processing"
-                        ? `<div class="flex items-center justify-center">
-                        <div class="w-4 h-4 border-2 border-grey-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>`
-                        : `<i class="fa fa-play-circle-o" aria-hidden="true"></i>`
+                    task.status == "running"
+                        ? `
+                        <div class="flex items-center justify-center">
+                            <div class="w-4 h-4 border-2 border-grey-500 border-t-transparent rounded-full animate-spin"></div>
+                        </div>`
+                        : `
+                        <div class="flex flex-row ${DAG.status != "created" ? "ml-auto" : ""}">
+                            <i class="fa fa-play-circle-o" aria-hidden="true"></i>
+                        </div>`
                 }
-                <div class="flex items-end mx-1">
-                    <button class="delete-task flex text-red-500 text-base hover:text-red-700 focus:outline-none">
-                        <i class="fa fa-trash" aria-hidden="true"></i>
-                    </button>
-                    <button class="add-task flex ml-4 text-white text-base hover:text-gray-300 focus:outline-none" data-parent_id="${task.id}">
-                        <i class="fa fa-plus" aria-hidden="true"></i>
-                    </button>
-                </div>
+                ${
+                    DAG.status != "created"
+                        ? ``
+                        : `
+                        <div class="flex items-end mx-1">
+                            <button class="delete-task flex text-red-500 text-base hover:text-red-700 focus:outline-none" data-task-id="${task.id}" data-task-name="${task.name}">
+                                <i class="fa fa-trash" aria-hidden="true"></i>
+                            </button>
+                            <button class="add-task flex ml-4 text-white text-base hover:text-gray-300 focus:outline-none" data-parent_id="${task.id}">
+                                <i class="fa fa-plus" aria-hidden="true"></i>
+                            </button>
+                        </div>`
+                }
             </div>
         </div>
     `);
@@ -139,7 +166,6 @@ function getTaskNode(task, level, prevTaskId) {
 function drawArrowBetweenTwoTasks(parentTaskId, childTaskId) {
     const parent = document.getElementById(`task-${parentTaskId}`);
     const child = document.getElementById(`task-${childTaskId}`);
-    console.log({ parent, child });
     if (!parent || !child) return;
     let startPoint = {
         left: parent.offsetLeft + parent.offsetWidth / 2,
@@ -167,16 +193,25 @@ function drawArrowBetweenTwoTasks(parentTaskId, childTaskId) {
 
 async function renderDag(dag) {
     if (!dag) return;
+    // Set Dag metadata
+    DAG = dag;
+    document.getElementById("dag-name").textContent = dag.name;
+
+    // Clear DAG Container
+    DAG_CONTAINER.innerHTML = "";
+
     if (dag.tasks == null) {
         let addTaskNode = getTemplateToElement(`
-            <div id="add-task" class="w-[200px] task rounded-lg" id="add-task-btn" data-parent_id="null">
-                <p>Add Task</p>
+            <div id="add-task" class="task p-0 flex flex-row bg-blue-500 text-white justify-center items-center m-4" id="add-task-btn" data-parent_id="null">
+                <i class="fa fa-plus mx-2" aria-hidden="true"></i>
+                <p class="mx-2">Add Task</p>
             </div>
         `);
         addTaskNode.addEventListener("click", renderAddTaskForm);
         DAG_CONTAINER.appendChild(addTaskNode);
         return;
     }
+    document.getElementById("run-dag").classList.remove("hidden");
 
     let tasks = {};
     let graph = {};
@@ -193,9 +228,6 @@ async function renderDag(dag) {
         }
     }
 
-    // Clear DAG Container
-    DAG_CONTAINER.innerHTML = "";
-
     // BFS Rendering
     q = [];
     q.push({ node: root, level: 1 });
@@ -211,6 +243,9 @@ async function renderDag(dag) {
         document
             .querySelector(`div#task-${task.id} button.add-task`)
             .addEventListener("click", renderAddTaskForm);
+        document
+            .querySelector(`div#task-${task.id} button.delete-task`)
+            .addEventListener("click", deleteTask);
 
         prevTaskId = task.id;
 
@@ -227,12 +262,8 @@ async function renderDag(dag) {
 async function getExecutors() {
     const response = await fetch(`${BASE_API_URL}/executors`);
     if (response.status != 200) {
-        if (response.status == 404) {
-            showToast("No executor found", "error");
-        } else {
-            const { error } = await response.json();
-            showToast(error, "error");
-        }
+        const { error } = await response.json();
+        showToast(error, "error");
         return;
     }
     const { executors } = await response.json();
@@ -254,6 +285,20 @@ async function getDag() {
     return dag;
 }
 
+async function deleteDag() {
+    // Take confirmation
+    if (!confirm(`Are you sure you want to delete '${DAG.name}' dag`)) return;
+    const response = await fetch(`${BASE_API_URL}/dags/${DAG_ID}`, {
+        method: "DELETE",
+    });
+    if (response.status != 200) {
+        const { error } = await response.json();
+        showToast(error, "error");
+        return;
+    }
+    window.location.href = "/dags";
+}
+
 document
     .getElementById("cancel-task-form")
     .addEventListener("click", closeTaskForm);
@@ -261,6 +306,8 @@ document
 document
     .getElementById("submit-task-form")
     .addEventListener("click", submitTask);
+
+document.getElementById("delete-dag").addEventListener("click", deleteDag);
 
 async function main() {
     DAG_CONTAINER.style["height"] =

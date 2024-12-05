@@ -95,6 +95,10 @@ func (apiC *APIControllers) DeleteDag(c *gin.Context) {
 	}
 
 	if err := do.DeleteDag(id); err != nil {
+        if err == database.NoRowsAffectedError {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Can't delete already running dag"})
+            return
+        }
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete dag"})
 		return
 	}
@@ -228,8 +232,7 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
     }
     err = c.SaveUploadedFile(codeFilesZip, taskDir+"/code.zip")
     if err != nil {
-        err = txn.Rollback()
-        if err != nil {
+        if txnErr := txn.Rollback(); txnErr != nil {
             logger.Error(err)
         }
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
@@ -255,17 +258,32 @@ func (apiC *APIControllers) DeleteTask(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-    taskDir := fmt.Sprintf("storage/code-zip-files/%d", id)
-    if err = os.RemoveAll(taskDir); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
-		return
-    }
 
-	if err = to.DeleteTask(id); err != nil {
+    txn, err := to.DeleteTask(id)
+	if err != nil {
+        if err == database.NoRowsAffectedError {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Can't delete already running dag or task"})
+            return
+        }
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
 		return
 	}
 
+    taskDir := fmt.Sprintf("storage/code-files-zip/%d", id)
+    if err = os.RemoveAll(taskDir); err != nil {
+        if txnErr := txn.Rollback(); txnErr != nil {
+            logger.Error(err)
+        }
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task"})
+		return
+    }
+
+    txn.Commit()
+    if err != nil {
+        logger.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
+		return
+    }
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
 }
 

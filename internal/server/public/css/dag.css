@@ -1,6 +1,5 @@
 #dag-container {
     position: relative;
-    margin: 2.5%;
     overflow: auto;
 }
 .task {

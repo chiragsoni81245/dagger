@@ -22,6 +22,19 @@
             </div>
         </nav>
 
+        <!-- Dag Metadata and Action -->
+        <div class="flex flex-row justify-end items-center my-2 mx-4">
+            <p id="dag-name" class="text-lg font-bold mr-auto"></p>
+            <button id="run-dag" type="button" class="px-4 py-2 mx-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors hidden">
+                Run
+                <i class="fa fa-play-circle-o" aria-hidden="true"></i>
+            </button>
+            <button id="delete-dag" type="button" class="px-4 py-2 mx-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                Delete
+                <i class="fa fa-trash" aria-hidden="true"></i>
+            </button>
+        </div>
+        <hr class="my-2"/>
         <!-- Dag Diagram -->
         <div id="dag-container">
         </div>

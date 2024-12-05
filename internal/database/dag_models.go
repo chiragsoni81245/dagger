@@ -103,6 +103,14 @@ func (do *DagOperations) CreateDag(name string) (int, error) {
 }
 
 func (do *DagOperations) DeleteDag(id int) error {
-	_, err := do.DB.Exec(`DELETE FROM dag WHERE id = $1`, id)
+	result, err := do.DB.Exec(`DELETE FROM dag WHERE id = $1 and status = 'created'`, id)
+    rows_affected, err := result.RowsAffected()
+	if err != nil {
+		do.Logger.Error("Error deleting dag:", err)
+		return err
+	}
+    if rows_affected == 0 {
+        return NoRowsAffectedError
+    }
 	return err
 }

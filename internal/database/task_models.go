@@ -63,6 +63,11 @@ func (to *TaskOperations) CreateTask(dagID int, executorID int, name string, tas
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id`, dagID, name, parentID, executorID, taskType, definition).Scan(&id)
 	if err != nil {
+        txnErr := txn.Rollback()
+        if txnErr != nil {
+            to.Logger.Error("Error rolling back create task transaction: ", err)
+            return 0, nil, txnErr
+        }
 		to.Logger.Error("Error creating task:", err)
 		return 0, nil, err
 	}
@@ -70,14 +75,41 @@ func (to *TaskOperations) CreateTask(dagID int, executorID int, name string, tas
 	return id, txn, nil
 }
 
-func (to *TaskOperations) DeleteTask(id int) error {
-	_, err := to.DB.Exec(`DELETE FROM task WHERE id = $1`, id)
+func (to *TaskOperations) DeleteTask(id int) (*sql.Tx, error) {
+    txn, err := to.DB.Begin()
+    if err != nil {
+        return nil, err
+    }
+    result, err := txn.Exec(`
+        DELETE FROM task
+        USING dag
+        WHERE 
+            task.id = $1 and 
+            dag.status = 'created'
+    `, id)
 	if err != nil {
+        if txnErr := txn.Rollback(); txnErr != nil {
+            to.Logger.Error("Error rolling back create task transaction: ", err)
+            return nil, txnErr
+        }
 		to.Logger.Error("Error deleting task:", err)
-		return err
+		return nil, err
 	}
+    rows_affected, err := result.RowsAffected()
+	if err != nil {
+        if txnErr := txn.Rollback(); txnErr != nil {
+            to.Logger.Error("Error rolling back create task transaction: ", err)
+            return nil, txnErr
+        }
+		to.Logger.Error("Error deleting dag:", err)
+		return nil, err
+	}
+    if rows_affected == 0 {
+        return nil, NoRowsAffectedError
+    }
+    
 
-    return nil
+    return txn, nil
 }
 
 func (to *TaskOperations) GetTaskByID(id int) (*Task, error) {
