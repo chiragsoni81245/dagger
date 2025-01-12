@@ -2,13 +2,16 @@ package executor
 
 import (
 	"database/sql"
-	"time"
 
 	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/sirupsen/logrus"
 )
 
-func ExecuteTask(logger *logrus.Logger, db *sql.DB, executorId int, taskId int) (chan struct{}, error){
+type Executor interface {
+    RunTask(int) <-chan struct{}
+}
+
+func ExecuteTask(logger *logrus.Logger, db *sql.DB, executorId int, taskId int) (<-chan struct{}, error){
     row := db.QueryRow(`
         SELECT name, type, config
         FROM executor
@@ -21,12 +24,18 @@ func ExecuteTask(logger *logrus.Logger, db *sql.DB, executorId int, taskId int) 
         return nil, err
     }
 
-    c := make(chan struct{})
+    var e Executor
 
-    go func(){
-        time.Sleep(time.Second * 2)
-        c <- struct{}{}  
-    }()
+    switch (executor.Type) {
+    case "docker":
+        e = DockerExecutor{
+            DB: db,
+            Logger: logger,
+        }
+    }
+
+    c := e.RunTask(taskId)
 
     return c, nil 
 }
+

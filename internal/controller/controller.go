@@ -80,10 +80,8 @@ func RunDag(logger *logrus.Logger, id int) error{
         }
 
 
-        fmt.Println(tasksGraph)
-
         // BFS Traversal in task graph
-        runningTasks := make(map[int]chan struct{})
+        runningTasks := make(map[int]<-chan struct{})
         q := &queue.Queue[int]{}
         q.Enqueue(rootTask.ID)
         
@@ -101,6 +99,7 @@ func RunDag(logger *logrus.Logger, id int) error{
                 runningTasks[currentTaskId] = c 
                 fmt.Printf("Started execution for task: %d\n", currentTaskId)
             } else {
+                // Wait for one of the tasks to be completed to get its next tasks in queue
                 for {
                     completedTaskId := -1 
                     for taskId, c := range runningTasks {
