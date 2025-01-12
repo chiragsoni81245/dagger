@@ -1,29 +1,18 @@
-package database
+package models
 
 import (
 	"database/sql"
 
 	"github.com/sirupsen/logrus"
+    "github.com/chiragsoni81245/dagger/internal/types"
 )
-
-type Task struct {
-	ID          int    `json:"id"`
-	DagID       int    `json:"dag_id"`
-    Name        string `json:"name"`
-	Status      string `json:"status"`
-	ParentID    *int   `json:"parent_id"` // Nullable
-	ExecutorID  int    `json:"executor_id"`
-	Type        string `json:"type"`
-	definition  string
-	CreatedAt   string `json:"created_at"`
-}
 
 type TaskOperations struct {
     Logger *logrus.Logger
     DB     *sql.DB
 }
 
-func (to *TaskOperations) GetTasksByDagID(id int) ([]Task, error) {
+func (to *TaskOperations) GetTasksByDagID(id int) ([]types.Task, error) {
 	rows, err := to.DB.Query(`
 		SELECT id, dag_id, name, status, parent_id, executor_id, type, definition, created_at
 		FROM task
@@ -36,10 +25,10 @@ func (to *TaskOperations) GetTasksByDagID(id int) ([]Task, error) {
 	}
 	defer rows.Close()
 
-	var tasks []Task
+	var tasks []types.Task
 	for rows.Next() {
-		var task Task
-		if err := rows.Scan(&task.ID, &task.DagID, &task.Name, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.definition, &task.CreatedAt); err != nil {
+		var task types.Task
+		if err := rows.Scan(&task.ID, &task.DagID, &task.Name, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.Definition, &task.CreatedAt); err != nil {
 			to.Logger.Error("Error scanning task:", err)
 			return nil, err
 		}
@@ -112,12 +101,12 @@ func (to *TaskOperations) DeleteTask(id int) (*sql.Tx, error) {
     return txn, nil
 }
 
-func (to *TaskOperations) GetTaskByID(id int) (*Task, error) {
-	var task Task
+func (to *TaskOperations) GetTaskByID(id int) (*types.Task, error) {
+	var task types.Task
 	err := to.DB.QueryRow(`
 		SELECT id, dag_id, name, status, parent_id, executor_id, type, definition, created_at
 		FROM task
-		WHERE id = $1`, id).Scan(&task.ID, &task.Name, &task.DagID, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.definition, &task.CreatedAt)
+		WHERE id = $1`, id).Scan(&task.ID, &task.Name, &task.DagID, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.Definition, &task.CreatedAt)
 
 	if err != nil {
 		to.Logger.Error("Error fetching task:", err)

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/chiragsoni81245/dagger/internal/database"
+	"github.com/chiragsoni81245/dagger/internal/models"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -22,7 +22,7 @@ type APIControllers struct {}
 func (apiC *APIControllers) GetDags(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    do := database.DagOperations{Logger: logger, DB: db}
+    do := models.DagOperations{Logger: logger, DB: db}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
@@ -39,7 +39,7 @@ func (apiC *APIControllers) GetDags(c *gin.Context) {
 func (apiC *APIControllers) GetDagByID(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    do := database.DagOperations{Logger: logger, DB: db}
+    do := models.DagOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -63,7 +63,7 @@ func (apiC *APIControllers) GetDagByID(c *gin.Context) {
 func (apiC *APIControllers) CreateDag(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    do := database.DagOperations{Logger: logger, DB: db}
+    do := models.DagOperations{Logger: logger, DB: db}
 
 	var input struct {
 		Name string `json:"name"`
@@ -86,7 +86,7 @@ func (apiC *APIControllers) CreateDag(c *gin.Context) {
 func (apiC *APIControllers) DeleteDag(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    do := database.DagOperations{Logger: logger, DB: db}
+    do := models.DagOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -95,7 +95,7 @@ func (apiC *APIControllers) DeleteDag(c *gin.Context) {
 	}
 
 	if err := do.DeleteDag(id); err != nil {
-        if err == database.NoRowsAffectedError {
+        if err == models.NoRowsAffectedError {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "Can't delete already running dag"})
             return
         }
@@ -105,6 +105,33 @@ func (apiC *APIControllers) DeleteDag(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Dag deleted"})
 }
+func (apiC *APIControllers) RunDag(c *gin.Context) {
+    logger := c.MustGet("logger").(*logrus.Logger)
+    db := c.MustGet("db").(*sql.DB)
+    do := models.DagOperations{Logger: logger, DB: db}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	if err := do.RunDag(id); err != nil {
+        if err == sql.ErrNoRows {
+		    c.JSON(http.StatusNotFound, gin.H{"error": "Invalid ID"})
+		    return
+        }
+        if err == models.AlreadyInRunningState {
+		    c.JSON(http.StatusNotFound, gin.H{"error": "Dag is already in running state"})
+		    return
+        }
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to run dag"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Dag started running"})
+}
+
 
 
 // --------------------------------------------------------------------------------------------------
@@ -113,7 +140,7 @@ func (apiC *APIControllers) DeleteDag(c *gin.Context) {
 func (apiC *APIControllers) GetTasksByDagID(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.TaskOperations{Logger: logger, DB: db}
+    to := models.TaskOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -137,7 +164,7 @@ func (apiC *APIControllers) GetTasksByDagID(c *gin.Context) {
 func (apiC *APIControllers) GetTaskByID(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.TaskOperations{Logger: logger, DB: db}
+    to := models.TaskOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -161,7 +188,7 @@ func (apiC *APIControllers) GetTaskByID(c *gin.Context) {
 func (apiC *APIControllers) CreateTask(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.TaskOperations{Logger: logger, DB: db}
+    to := models.TaskOperations{Logger: logger, DB: db}
 
 	var input struct {
         DagId int `json:"dag_id"`
@@ -252,7 +279,7 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
 func (apiC *APIControllers) DeleteTask(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.TaskOperations{Logger: logger, DB: db}
+    to := models.TaskOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -262,7 +289,7 @@ func (apiC *APIControllers) DeleteTask(c *gin.Context) {
 
     txn, err := to.DeleteTask(id)
 	if err != nil {
-        if err == database.NoRowsAffectedError {
+        if err == models.NoRowsAffectedError {
             c.JSON(http.StatusInternalServerError, gin.H{"error": "Can't delete already running dag or task"})
             return
         }
@@ -295,7 +322,7 @@ func (apiC *APIControllers) DeleteTask(c *gin.Context) {
 func (apiC *APIControllers) GetExecutors(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    eo := database.ExecutorOperations{Logger: logger, DB: db}
+    eo := models.ExecutorOperations{Logger: logger, DB: db}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("page_size", "10"))
@@ -312,7 +339,7 @@ func (apiC *APIControllers) GetExecutors(c *gin.Context) {
 func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.ExecutorOperations{Logger: logger, DB: db}
+    to := models.ExecutorOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -336,7 +363,7 @@ func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
 func (apiC *APIControllers) CreateExecutor(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.ExecutorOperations{Logger: logger, DB: db}
+    to := models.ExecutorOperations{Logger: logger, DB: db}
 
 	var input struct {
 		Name string `json:"name"`
@@ -361,7 +388,7 @@ func (apiC *APIControllers) CreateExecutor(c *gin.Context) {
 func (apiC *APIControllers) DeleteExecutor(c *gin.Context) {
     logger := c.MustGet("logger").(*logrus.Logger)
     db := c.MustGet("db").(*sql.DB)
-    to := database.ExecutorOperations{Logger: logger, DB: db}
+    to := models.ExecutorOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

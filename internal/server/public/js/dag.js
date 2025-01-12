@@ -211,7 +211,13 @@ async function renderDag(dag) {
         DAG_CONTAINER.appendChild(addTaskNode);
         return;
     }
-    document.getElementById("run-dag").classList.remove("hidden");
+    if (dag.status == "created") {
+        document.getElementById("run-dag").classList.remove("hidden");
+        document.getElementById("delete-dag").classList.remove("hidden");
+    } else {
+        document.getElementById("run-dag").classList.add("hidden");
+        document.getElementById("delete-dag").classList.add("hidden");
+    }
 
     let tasks = {};
     let graph = {};
@@ -242,10 +248,10 @@ async function renderDag(dag) {
         DAG_CONTAINER.appendChild(taskNode);
         document
             .querySelector(`div#task-${task.id} button.add-task`)
-            .addEventListener("click", renderAddTaskForm);
+            ?.addEventListener("click", renderAddTaskForm);
         document
             .querySelector(`div#task-${task.id} button.delete-task`)
-            .addEventListener("click", deleteTask);
+            ?.addEventListener("click", deleteTask);
 
         prevTaskId = task.id;
 
@@ -299,6 +305,21 @@ async function deleteDag() {
     window.location.href = "/dags";
 }
 
+async function runDag() {
+    // Take confirmation
+    if (!confirm(`Are you sure you want to start '${DAG.name}' dag`)) return;
+    const response = await fetch(`${BASE_API_URL}/dags/${DAG_ID}/run`, {
+        method: "POST",
+    });
+    if (response.status != 200) {
+        const { error } = await response.json();
+        showToast(error, "error");
+        return;
+    }
+    showToast("Started running");
+    renderDag(await getDag());
+}
+
 document
     .getElementById("cancel-task-form")
     .addEventListener("click", closeTaskForm);
@@ -308,6 +329,7 @@ document
     .addEventListener("click", submitTask);
 
 document.getElementById("delete-dag").addEventListener("click", deleteDag);
+document.getElementById("run-dag").addEventListener("click", runDag);
 
 async function main() {
     DAG_CONTAINER.style["height"] =

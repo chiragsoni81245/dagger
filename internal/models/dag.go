@@ -1,35 +1,19 @@
-package database
+package models
 
 import (
 	"database/sql"
 
+	"github.com/chiragsoni81245/dagger/internal/types"
+	"github.com/chiragsoni81245/dagger/internal/controller"
 	"github.com/sirupsen/logrus"
 )
-
-type Dag struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-    Status    string `json:"status"`
-	CreatedAt string `json:"created_at"`
-    PendingTasks int `json:"pending_tasks"`
-    CompletedTasks int `json:"completed_tasks"`
-    ProcessingTasks int `json:"processing_tasks"`
-}
-
-type DagWithTasks struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-    Status    string `json:"status"`
-	CreatedAt string `json:"created_at"`
-    Tasks     []Task `json:"tasks"`
-}
 
 type DagOperations struct {
     Logger *logrus.Logger
     DB     *sql.DB
 }
 
-func (do *DagOperations) GetDags(page int, perPage int) ([]Dag, int, error) {
+func (do *DagOperations) GetDags(page int, perPage int) ([]types.Dag, int, error) {
     var total_dags int;
     total_query_row := do.DB.QueryRow(`
         SELECT count(*)
@@ -55,9 +39,9 @@ func (do *DagOperations) GetDags(page int, perPage int) ([]Dag, int, error) {
 	}
 	defer rows.Close()
 
-	var dags []Dag
+	var dags []types.Dag
 	for rows.Next() {
-		var dag Dag
+		var dag types.Dag
 		if err := rows.Scan(&dag.ID, &dag.Name, &dag.Status, &dag.CreatedAt, &dag.PendingTasks); err != nil {
 			do.Logger.Println("Error scanning dag:", err)
 			return nil, 0, err
@@ -68,13 +52,13 @@ func (do *DagOperations) GetDags(page int, perPage int) ([]Dag, int, error) {
 	return dags, total_dags, nil
 }
 
-func (do *DagOperations) GetDagByID(id int) (*DagWithTasks, error) {
+func (do *DagOperations) GetDagByID(id int) (*types.DagWithTasks, error) {
 	row := do.DB.QueryRow(`
 		SELECT id, name, status, created_at 
 		FROM dag 
 		WHERE id=$1`, id)
 
-	var dag DagWithTasks
+	var dag types.DagWithTasks
     if err := row.Scan(&dag.ID, &dag.Name, &dag.Status, &dag.CreatedAt); err != nil {
         do.Logger.Println("Error scanning dag:", err)
         return nil, err
@@ -114,3 +98,26 @@ func (do *DagOperations) DeleteDag(id int) error {
     }
 	return err
 }
+
+func (do *DagOperations) RunDag(id int) error {
+	row := do.DB.QueryRow(`
+		SELECT id, name, status, created_at 
+		FROM dag 
+		WHERE id=$1`, id)
+
+	var dag types.Dag
+    if err := row.Scan(&dag.ID, &dag.Name, &dag.Status, &dag.CreatedAt); err != nil {
+        return err
+    }
+    
+    if dag.Status != "created" {
+        return AlreadyInRunningState
+    }
+
+    err := controller.RunDag(do.Logger, id)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+

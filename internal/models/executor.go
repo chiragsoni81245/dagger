@@ -1,25 +1,18 @@
-package database
+package models
 
 import (
 	"database/sql"
 
+	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/sirupsen/logrus"
 )
-
-type Executor struct {
-	ID        int    `json:"id"`
-	Type      string `json:"type"`
-    Name      string `json:"name"`
-	config    string
-	CreatedAt string `json:"created_at"`
-}
 
 type ExecutorOperations struct {
     Logger *logrus.Logger
     DB     *sql.DB
 }
 
-func (eo *ExecutorOperations) GetExecutors(page int, perPage int) ([]Executor, int, error) {
+func (eo *ExecutorOperations) GetExecutors(page int, perPage int) ([]types.Executor, int, error) {
     var total_executors int;
     total_query_row := eo.DB.QueryRow(`
         SELECT count(*)
@@ -37,10 +30,10 @@ func (eo *ExecutorOperations) GetExecutors(page int, perPage int) ([]Executor, i
 	}
 	defer rows.Close()
 
-	var executors []Executor
+	var executors []types.Executor
 	for rows.Next() {
-		var executor Executor
-		if err := rows.Scan(&executor.ID, &executor.Type, &executor.Name, &executor.config, &executor.CreatedAt); err != nil {
+		var executor types.Executor
+		if err := rows.Scan(&executor.ID, &executor.Type, &executor.Name, &executor.Config, &executor.CreatedAt); err != nil {
 			eo.Logger.Error("Error scanning executor:", err)
 			return nil, 0, err
 		}
@@ -69,12 +62,12 @@ func (eo *ExecutorOperations) DeleteExecutor(id int) error {
 	return err
 }
 
-func (eo *ExecutorOperations) GetExecutorByID(id int) (*Executor, error) {
-	var executor Executor
+func (eo *ExecutorOperations) GetExecutorByID(id int) (*types.Executor, error) {
+	var executor types.Executor
 	err := eo.DB.QueryRow(`
 		SELECT id, type, config, created_at
 		FROM executor
-		WHERE id = $1`, id).Scan(&executor.ID, &executor.Type, &executor.config, &executor.CreatedAt)
+		WHERE id = $1`, id).Scan(&executor.ID, &executor.Type, &executor.Config, &executor.CreatedAt)
 
 	if err != nil {
 		eo.Logger.Error("Error fetching executor by ID:", err)

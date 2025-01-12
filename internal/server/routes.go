@@ -24,6 +24,7 @@ func SetupRoutes(r *gin.Engine) {
 		v1.GET("/dags/:id", api.GetDagByID)
         v1.GET("/dags/:id/tasks", api.GetTasksByDagID)
 		v1.DELETE("/dags/:id", api.DeleteDag)
+		v1.POST("/dags/:id/run", api.RunDag)
 
         // Task routes
         v1.POST("/tasks", api.CreateTask)
