@@ -140,7 +140,11 @@ function getTaskNode(task, level, prevTaskId) {
                         <div class="flex items-center justify-center">
                             <div class="w-4 h-4 border-2 border-grey-500 border-t-transparent rounded-full animate-spin"></div>
                         </div>`
-                        : `
+                        : task.status == "completed"
+                          ? `<div class="flex flex-row ${DAG.status != "created" ? "ml-auto" : ""}">
+                            <i class="fa fa-play-circle-o" aria-hidden="true"></i>
+                        </div>`
+                          : `
                         <div class="flex flex-row ${DAG.status != "created" ? "ml-auto" : ""}">
                             <i class="fa fa-play-circle-o" aria-hidden="true"></i>
                         </div>`

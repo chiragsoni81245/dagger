@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/chiragsoni81245/dagger/internal/config"
@@ -9,6 +8,7 @@ import (
 	"github.com/chiragsoni81245/dagger/internal/executor"
 	"github.com/chiragsoni81245/dagger/internal/queue"
 	"github.com/chiragsoni81245/dagger/internal/types"
+	"github.com/chiragsoni81245/dagger/internal/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,7 +53,7 @@ func RunDag(logger *logrus.Logger, id int) error{
             ORDER BY parent_id ASC
         `, id)
         if err != nil {
-            logger.Error(fmt.Sprintf("[Dag %d] Error fetching tasks: %s", id, err))
+            logger.Errorf("[Dag %d] Error fetching tasks: %s", id, err)
             return
         }
         defer rows.Close()
@@ -61,7 +61,7 @@ func RunDag(logger *logrus.Logger, id int) error{
         for rows.Next() {
             var task types.Task
             if err := rows.Scan(&task.ID, &task.DagID, &task.Name, &task.Status, &task.ParentID, &task.ExecutorID, &task.Type, &task.Definition, &task.CreatedAt); err != nil {
-                logger.Error("Error scanning task:", err)
+                logger.Errorf("[Dag %d] Error scanning tasks: %s", id, err)
                 return
             }
             tasksIdMap[task.ID] = task
@@ -97,7 +97,7 @@ func RunDag(logger *logrus.Logger, id int) error{
                     return
                 }
                 runningTasks[currentTaskId] = c 
-                fmt.Printf("Started execution for task: %d\n", currentTaskId)
+                logger.Printf("[Task %d] Started execution", currentTaskId)
             } else {
                 // Wait for one of the tasks to be completed to get its next tasks in queue
                 for {
@@ -112,6 +112,13 @@ func RunDag(logger *logrus.Logger, id int) error{
                     }
 
                     if completedTaskId != -1 {
+                        err = utils.UpdateTaskStatus(db, completedTaskId, "completed")
+                        if err != nil {
+                            logger.Error(err)
+                            return
+                        }
+                        logger.Printf("[Task %d] Execution completed", completedTaskId)
+                        delete(runningTasks, completedTaskId)
                         // find all the child tasks of this task, and get them running
                         for _, id := range tasksGraph[completedTaskId] {
                             q.Enqueue(id)
@@ -123,7 +130,14 @@ func RunDag(logger *logrus.Logger, id int) error{
                 }
             }
         }
-
+        
+        
+        err = utils.UpdateDagStatus(db, id, "completed")
+        if err != nil {
+            logger.Errorf("[Dag %d] %s", id, err)
+            return
+        }
+        logger.Printf("[Dag %d] Execution completed", id)
     }()
 
     return nil

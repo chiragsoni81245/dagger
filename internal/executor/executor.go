@@ -2,6 +2,8 @@ package executor
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 
 	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/sirupsen/logrus"
@@ -32,7 +34,11 @@ func ExecuteTask(logger *logrus.Logger, db *sql.DB, executorId int, taskId int) 
             DB: db,
             Logger: logger,
         }
+    default:
+        err := errors.New(fmt.Sprintf("[Task %d] Invalid executor selected", taskId))
+        return nil, err 
     }
+
 
     c := e.RunTask(taskId)
 
