@@ -1,15 +1,21 @@
 package executor
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/chiragsoni81245/dagger/internal/utils"
-	"github.com/docker/docker/client"
 	"github.com/sirupsen/logrus"
+
+	dockerTypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 )
 
 type DockerExecutor struct {
@@ -18,9 +24,14 @@ type DockerExecutor struct {
 }
 
 func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
+    ctx := context.Background()
     var err error
+    var buildResponse dockerTypes.ImageBuildResponse 
     defer func() {
-        if err == nil { return }
+        if err == nil {
+            buildResponse.Body.Close()
+            return
+        }
         de.Logger.Errorf("[Task %d] %s", taskId, err)
         err := utils.UpdateTaskStatus(de.DB, taskId, "error")
         if err != nil {
@@ -48,18 +59,13 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
     }
 
     // Create a Docker client
-	_, err = client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+    cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
     if err != nil {
         return
     }
     
     // Unzip submitted code
     sourceCodeZip := fmt.Sprintf("storage/code-files-zip/%d/code.zip", taskId)
-    sourceCodePath := fmt.Sprintf("storage/codes/%d/", taskId)
-    err = utils.Unzip(sourceCodeZip, sourceCodePath)
-    if err != nil {
-        return
-    }
 
     var taskDefination struct {
         Dockerfile string `json:"dockerfile"`
@@ -68,8 +74,43 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
     if err != nil {
         return
     }
-    dockerfileLocation := fmt.Sprintf("storage/code-files-zip/%d/code/%s", taskId, taskDefination.Dockerfile) 
-    de.Logger.Println("==> dockerfile: ", dockerfileLocation)
+
+    // Create a tarball of the Dockerfile
+    tarBuf := new(bytes.Buffer)
+	if err = utils.CreateTarFromZip(sourceCodeZip, tarBuf, map[string]string{
+        taskDefination.Dockerfile: "Dockerfile", 
+    }); err != nil {
+		err = fmt.Errorf("Error creating tarball from zip: %v", err)
+        return
+	}
+
+    // Build the Docker image
+	imageName := fmt.Sprintf("dagger-task-%d", taskId)
+	buildResponse, err = cli.ImageBuild(ctx, tarBuf, dockerTypes.ImageBuildOptions{
+		Tags: []string{imageName},
+	})
+	if err != nil {
+        return
+	}
+
+    logDir := fmt.Sprintf("logs/task-%d", taskId)
+    err = os.MkdirAll(logDir, 0755)
+    if err != nil {
+        return
+    }
+
+    imageBuildLogFilePath := fmt.Sprintf("%s/image-build.log", logDir)
+	imageBuildLogFile, err := os.Create(imageBuildLogFilePath)
+	if err != nil {
+		err = fmt.Errorf("Error creating %s file: %s\n", imageBuildLogFilePath, err)
+		return
+	}
+
+    if _, err = io.Copy(imageBuildLogFile, buildResponse.Body); err != nil {
+        return
+	}
+    imageBuildLogFile.Close()
+    de.Logger.Infof("[Task %d] Docker image '%s' built successfully", taskId, imageName)
 
     c <- struct{}{}  
     close(c)

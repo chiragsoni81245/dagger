@@ -19,11 +19,6 @@ async function submitTask() {
             formData.append(name, input.value);
         }
     }
-    for (let input of TASK_FORM_MODAL.getElementsByTagName("textarea")) {
-        if (!input.reportValidity()) return;
-        let name = input.getAttribute("name");
-        formData.append(name, input.value);
-    }
     for (let input of TASK_FORM_MODAL.getElementsByTagName("select")) {
         if (!input.reportValidity()) return;
         let name = input.getAttribute("name");
@@ -334,6 +329,19 @@ document
 
 document.getElementById("delete-dag").addEventListener("click", deleteDag);
 document.getElementById("run-dag").addEventListener("click", runDag);
+document.getElementById("task-type").addEventListener("change", (e) => {
+    let definationBlocks = document.querySelectorAll(
+        `#taks-definition-block div.dynamic-fields > div`
+    );
+    console.log(definationBlocks);
+    for (let df of definationBlocks) {
+        if (df.classList.contains(`type-${e.target.value}`)) {
+            df.classList.remove("hidden");
+        } else {
+            df.classList.add("hidden");
+        }
+    }
+});
 
 async function main() {
     DAG_CONTAINER.style["height"] =

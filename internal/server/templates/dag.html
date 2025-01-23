@@ -56,8 +56,6 @@
                         <label for="type" class="block text-sm font-medium text-gray-700">Type*</label>
                         <select name="type" id="task-type" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                             <option value="" disabled selected>Select a type</option>
-                            <option value="go">Go</option>
-                            <option value="python">Python</option>
                             <option value="docker">Docker</option>
                         </select>
                     </div>
@@ -66,9 +64,13 @@
                             <label for="codeFilesZip" class="block text-sm font-medium text-gray-700">Upload Code Zip*</label>
                             <input type="file" id="code-files-zip" name="code_files_zip" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                         </div>
-                        <div class="mb-4">
-                            <label for="command" class="block text-sm font-medium text-gray-700">Init Command</label>
-                            <textarea id="task-command" name="command" rows="4" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                        <div class="dynamic-fields">
+                            <div class="type-docker hidden">
+                                <div class="mb-4">
+                                    <label for="command" class="block text-sm font-medium text-gray-700">Dockerfile Path</label>
+                                    <input id="dockerfile-path" name="dockerfile-path" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="flex justify-end">

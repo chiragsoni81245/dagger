@@ -3,3 +3,4 @@ bin
 config.yaml
 postgres_data
 storage
+logs

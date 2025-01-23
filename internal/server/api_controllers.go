@@ -196,7 +196,7 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
         ParentID *int `json:"parent_id"`
         Name string `json:"name"`
         Type string `json:"type"`
-        Command string `json:"command"`
+        DockerfilePath string `json:"dockerfile-path"`
 	}
 
     var err error;
@@ -212,7 +212,7 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
 	}
     input.Type = c.PostForm("type")
     input.Name = c.PostForm("name")
-    input.Command = c.PostForm("command")
+    input.DockerfilePath = c.PostForm("dockerfile-path")
     parentId := c.PostForm("parent_id")
     if parentId != "null" {
         parentIdInt, err := strconv.Atoi(parentId)
@@ -230,8 +230,8 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
 	}
     
     var definition string = "{}";
-    if input.Command != "" {
-        definition = fmt.Sprintf("{\"initCommand\": \"%s\"}", input.Command)
+    if input.DockerfilePath != "" {
+        definition = fmt.Sprintf("{\"dockerfile\": \"%s\"}", input.DockerfilePath)
     } 
 
 	id, txn, err := to.CreateTask(input.DagId, input.ExecutorID, input.Name, input.Type, definition, input.ParentID)

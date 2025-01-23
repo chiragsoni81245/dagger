@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -122,6 +124,65 @@ func writeFile(file *zip.File, targetPath string) error {
 	if _, err := io.Copy(destFile, srcFile); err != nil {
 		return fmt.Errorf("failed to write file content: %w", err)
 	}
+
+	return nil
+}
+
+// createTarFromZip reads a zip file and writes its contents into a tarball.
+func CreateTarFromZip(zipFilePath string, tarBuf *bytes.Buffer, renameFiles map[string]string) error {
+	zipFile, err := os.Open(zipFilePath)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	stat, err := zipFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	zipReader, err := zip.NewReader(zipFile, stat.Size())
+	if err != nil {
+		return err
+	}
+
+	tarWriter := tar.NewWriter(tarBuf)
+	defer tarWriter.Close()
+
+	for _, file := range zipReader.File {
+		fileReader, err := file.Open()
+		if err != nil {
+			return err
+		}
+		defer fileReader.Close()
+
+        fileName := file.Name
+        if _, ok := renameFiles[fileName]; ok {
+            fileName = renameFiles[fileName]
+            delete(renameFiles, fileName)
+        }
+
+		header := &tar.Header{
+			Name: fileName,
+			Mode: 0600,
+			Size: int64(file.UncompressedSize64),
+		}
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return err
+		}
+
+		if _, err := io.Copy(tarWriter, fileReader); err != nil {
+			return err
+		}
+	}
+
+    if len(renameFiles) > 0 {
+        keys := make([]string, 1)
+        for k := range renameFiles {
+            keys = append(keys, k)
+        }
+        return fmt.Errorf("Files not found in zip, %s", strings.Join(keys, ", "))
+    }
 
 	return nil
 }
