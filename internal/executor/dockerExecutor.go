@@ -15,6 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	dockerTypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 )
 
@@ -29,7 +31,6 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
     var buildResponse dockerTypes.ImageBuildResponse 
     defer func() {
         if err == nil {
-            buildResponse.Body.Close()
             return
         }
         de.Logger.Errorf("[Task %d] %s", taskId, err)
@@ -109,8 +110,62 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
     if _, err = io.Copy(imageBuildLogFile, buildResponse.Body); err != nil {
         return
 	}
+    buildResponse.Body.Close()
     imageBuildLogFile.Close()
     de.Logger.Infof("[Task %d] Docker image '%s' built successfully", taskId, imageName)
+
+    // Running container with this image
+    resp, err := cli.ContainerCreate(ctx, &container.Config{
+		Image: imageName,
+	}, nil, nil, nil, imageName)
+    if err != nil {
+        return
+    }
+    if err = cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+        return
+	}
+
+    // Wait for container to task to complete
+    statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	select {
+	case err = <-errCh:
+		if err != nil {
+            return
+		}
+	case <-statusCh:
+	}
+
+    // Retrieve logs from the container
+	containerLogs, err := cli.ContainerLogs(ctx, resp.ID, container.LogsOptions{ShowStdout: true})
+	if err != nil {
+        return
+	}
+    containerLogFilePath := fmt.Sprintf("%s/run.log", logDir)
+	containerLogFile, err := os.Create(containerLogFilePath)
+	if err != nil {
+		err = fmt.Errorf("Error creating %s file: %v", containerLogFilePath, err)
+		return
+	}
+	io.Copy(containerLogFile, containerLogs)
+	containerLogs.Close()
+    containerLogFile.Close()
+
+    // Cleanup: Remove the container after it stops
+	if err = cli.ContainerRemove(ctx, resp.ID, container.RemoveOptions{
+		Force: true,
+	}); err != nil {
+		err = fmt.Errorf("Error removing container: %v", err)
+        return
+	}
+
+	// Cleanup: Remove the image after the container is removed
+	if _, err = cli.ImageRemove(ctx, imageName, image.RemoveOptions{
+		Force:         true,
+		PruneChildren: true,
+	}); err != nil {
+		err = fmt.Errorf("Error removing image: %v", err)
+        return
+	}
 
     c <- struct{}{}  
     close(c)
