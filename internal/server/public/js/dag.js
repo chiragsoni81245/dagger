@@ -5,6 +5,7 @@ let DAG;
 const DAG_ID = parseInt(document.getElementById("dag-id").value);
 const NAV = document.getElementsByTagName("nav")[0];
 
+// ---------------------------------- Task Actions ---------------------------------
 async function submitTask() {
     const TASK_FORM_MODAL = document.getElementById("task-form-modal");
     const formData = new FormData();
@@ -57,6 +58,7 @@ async function deleteTask() {
     renderDag(await getDag());
 }
 
+// ----------------------------------- Task Form -----------------------------------
 async function renderTaskForm(e) {
     e.stopPropagation();
     const action = this.classList.contains("edit-task") ? "Edit" : "Add";
@@ -110,6 +112,7 @@ function closeTaskForm() {
     TASK_FORM_MODAL.classList.add("hidden");
 }
 
+// -------------------------------- Task Logs Modal --------------------------------
 async function showTaskDetails(e) {
     e.stopPropagation();
     if (
@@ -233,103 +236,7 @@ function closeTaskDetails() {
     TASK_DETAILS_MODAL.classList.add("hidden");
 }
 
-function getTaskStatusElementString(status) {
-    return {
-        created: `
-            <div class="flex flex-row text-balck-800">
-            <i class="fa fa-list" aria-hidden="true"></i>
-            </div>
-            `,
-        running: `
-            <div class="status-running flex flex-row text-white">
-            <i class="fa fa-spinner spin" aria-hidden="true"></i>
-            </div>
-            `,
-        error: `
-            <div class="status-error flex flex-row text-red-300">
-            <i class="fa fa-exclamation-circle" aria-hidden="true"></i>
-            </div>
-            `,
-        completed: `
-            <div class="status-completed flex flex-row text-green-300">
-            <i class="fa fa-check-circle-o" aria-hidden="true"></i>
-            </div>
-            `,
-    }[status];
-}
-
-function getTaskNode(task, level, prevTaskId) {
-    const parent = document.getElementById(`task-${task.parent_id}`);
-    const prevTask = document.getElementById(`task-${prevTaskId}`);
-    let [left, top] = [MARGIN_IN_TASKS, MARGIN_IN_TASKS];
-    if (parent) {
-        left += parent.offsetWidth + parent.offsetLeft;
-        if (prevTask) {
-            top += prevTask.offsetHeight + prevTask.offsetTop;
-        } else {
-            top += parent.offsetHeight + parent.offsetTop;
-        }
-    }
-
-    return getTemplateToElement(`
-        <div 
-            id="task-${task.id}" 
-        class="task bg-[#4DA8DA] text-white justify-center ${["completed", "error"].indexOf(task.status) != -1 ? "cursor-pointer" : ""}" 
-            data-level="${level}" 
-            style="left: ${left}px; top: ${top}px"
-        >
-            <div class="flex flex-row justify-start items-center mb-2">
-                <img src="/static/images/${task.type}-icon.png"/>
-                <p class="name ml-auto">${task.name}</p>
-            </div>
-            <div class="flex flex-row justify-between items-end">
-                <div id="task-${task.id}-status">
-                    ${getTaskStatusElementString(task.status)}
-                </div>
-                <div id="task-${task.id}-actions" class="task-action-buttons flex items-end ${DAG.status != "created" ? "hidden" : ""}">
-                    <button class="edit-task flex text-white text-base hover:text-grey-300 focus:outline-none hidden" data-task-id="${task.id}" data-task-name="${task.name}">
-                        <i class="fa fa-edit" aria-hidden="true"></i>
-                    </button>
-                    <button class="delete-task flex ml-3 text-[#FF6B6B] text-base hover:text-red-700 focus:outline-none" data-task-id="${task.id}" data-task-name="${task.name}">
-                        <i class="fa fa-trash" aria-hidden="true"></i>
-                    </button>
-                    <button class="add-task flex ml-3 text-white text-base hover:text-gray-300 focus:outline-none" data-parent_id="${task.id}">
-                        <i class="fa fa-plus" aria-hidden="true"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `);
-}
-
-function drawArrowBetweenTwoTasks(parentTaskId, childTaskId) {
-    const parent = document.getElementById(`task-${parentTaskId}`);
-    const child = document.getElementById(`task-${childTaskId}`);
-    if (!parent || !child) return;
-    let startPoint = {
-        left: parent.offsetLeft + parent.offsetWidth / 2,
-        top: parent.offsetTop + parent.offsetHeight,
-    };
-    let endPoint = {
-        left: child.offsetLeft,
-        top: child.offsetTop + child.offsetHeight / 2,
-    };
-    const arrowHeadWidth = 12;
-    const arrowHeadHeight = 6;
-    const arrow = getTemplateToElement(`
-        <svg class="arrow" width="${DAG_CONTAINER.scrollWidth}" height="${DAG_CONTAINER.scrollHeight}">
-            <!-- First line -->
-            <line x1="${startPoint.left}" y1="${startPoint.top}" x2="${startPoint.left}" y2="${endPoint.top}" />
-            <!-- Second line -->
-            <line x1="${startPoint.left}" y1="${endPoint.top}" x2="${endPoint.left}" y2="${endPoint.top}" />
-            <!-- Arrowhead -->
-            <polygon points="${endPoint.left},${endPoint.top} ${endPoint.left - arrowHeadWidth},${endPoint.top - arrowHeadHeight} ${endPoint.left - arrowHeadWidth},${endPoint.top + arrowHeadHeight}" />
-        </svg>
-    `);
-
-    DAG_CONTAINER.appendChild(arrow);
-}
-
+// ---------------------------------- Dag Render -----------------------------------
 async function renderDag(dag) {
     if (!dag) return;
     // Set Dag metadata
@@ -413,6 +320,104 @@ async function renderDag(dag) {
     }
 }
 
+function getTaskNode(task, level, prevTaskId) {
+    const parent = document.getElementById(`task-${task.parent_id}`);
+    const prevTask = document.getElementById(`task-${prevTaskId}`);
+    let [left, top] = [MARGIN_IN_TASKS, MARGIN_IN_TASKS];
+    if (parent) {
+        left += parent.offsetWidth + parent.offsetLeft;
+        if (prevTask) {
+            top += prevTask.offsetHeight + prevTask.offsetTop;
+        } else {
+            top += parent.offsetHeight + parent.offsetTop;
+        }
+    }
+
+    return getTemplateToElement(`
+        <div 
+            id="task-${task.id}" 
+        class="task bg-[#4DA8DA] text-white justify-center ${["completed", "error"].indexOf(task.status) != -1 ? "cursor-pointer" : ""}" 
+            data-level="${level}" 
+            style="left: ${left}px; top: ${top}px"
+        >
+            <div class="flex flex-row justify-start items-center mb-2">
+                <img src="/static/images/${task.type}-icon.png"/>
+                <p class="name ml-auto">${task.name}</p>
+            </div>
+            <div class="flex flex-row justify-between items-end">
+                <div id="task-${task.id}-status">
+                    ${getTaskStatusElementString(task.status)}
+                </div>
+                <div id="task-${task.id}-actions" class="task-action-buttons flex items-end ${DAG.status != "created" ? "hidden" : ""}">
+                    <button class="edit-task flex text-white text-base hover:text-grey-300 focus:outline-none hidden" data-task-id="${task.id}" data-task-name="${task.name}">
+                        <i class="fa fa-edit" aria-hidden="true"></i>
+                    </button>
+                    <button class="delete-task flex ml-3 text-[#FF6B6B] text-base hover:text-red-700 focus:outline-none" data-task-id="${task.id}" data-task-name="${task.name}">
+                        <i class="fa fa-trash" aria-hidden="true"></i>
+                    </button>
+                    <button class="add-task flex ml-3 text-white text-base hover:text-gray-300 focus:outline-none" data-parent_id="${task.id}">
+                        <i class="fa fa-plus" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `);
+}
+
+function getTaskStatusElementString(status) {
+    return {
+        created: `
+            <div class="flex flex-row text-balck-800">
+            <i class="fa fa-list" aria-hidden="true"></i>
+            </div>
+            `,
+        running: `
+            <div class="status-running flex flex-row text-white">
+            <i class="fa fa-spinner spin" aria-hidden="true"></i>
+            </div>
+            `,
+        error: `
+            <div class="status-error flex flex-row text-red-300">
+            <i class="fa fa-exclamation-circle" aria-hidden="true"></i>
+            </div>
+            `,
+        completed: `
+            <div class="status-completed flex flex-row text-green-300">
+            <i class="fa fa-check-circle-o" aria-hidden="true"></i>
+            </div>
+            `,
+    }[status];
+}
+
+function drawArrowBetweenTwoTasks(parentTaskId, childTaskId) {
+    const parent = document.getElementById(`task-${parentTaskId}`);
+    const child = document.getElementById(`task-${childTaskId}`);
+    if (!parent || !child) return;
+    let startPoint = {
+        left: parent.offsetLeft + parent.offsetWidth / 2,
+        top: parent.offsetTop + parent.offsetHeight,
+    };
+    let endPoint = {
+        left: child.offsetLeft,
+        top: child.offsetTop + child.offsetHeight / 2,
+    };
+    const arrowHeadWidth = 12;
+    const arrowHeadHeight = 6;
+    const arrow = getTemplateToElement(`
+        <svg class="arrow" width="${DAG_CONTAINER.scrollWidth}" height="${DAG_CONTAINER.scrollHeight}">
+            <!-- First line -->
+            <line x1="${startPoint.left}" y1="${startPoint.top}" x2="${startPoint.left}" y2="${endPoint.top}" />
+            <!-- Second line -->
+            <line x1="${startPoint.left}" y1="${endPoint.top}" x2="${endPoint.left}" y2="${endPoint.top}" />
+            <!-- Arrowhead -->
+            <polygon points="${endPoint.left},${endPoint.top} ${endPoint.left - arrowHeadWidth},${endPoint.top - arrowHeadHeight} ${endPoint.left - arrowHeadWidth},${endPoint.top + arrowHeadHeight}" />
+        </svg>
+    `);
+
+    DAG_CONTAINER.appendChild(arrow);
+}
+
+// --------------------------------- API Calls -------------------------------------
 async function getExecutors() {
     const response = await fetch(`${BASE_API_URL}/executors`);
     if (response.status != 200) {
@@ -484,6 +489,29 @@ async function deleteDag(e) {
     window.location.href = "/dags";
 }
 
+async function runDag() {
+    // Take confirmation
+    if (!confirm(`Are you sure you want to start '${DAG.name}' dag`)) return;
+    const subscriptionEvent = `dag:${DAG_ID}`;
+    subscribe(subscriptionEvent, handleDagSubscriptionMessage);
+
+    const response = await fetch(`${BASE_API_URL}/dags/${DAG_ID}/run`, {
+        method: "POST",
+    });
+    if (response.status != 200) {
+        const { error } = await response.json();
+        showToast(error, "error");
+        return;
+    }
+    document.getElementById("run-dag").classList.add("hidden");
+    document.getElementById("delete-dag").classList.add("hidden");
+    for (let node of document.getElementsByClassName("task-action-buttons")) {
+        node.classList.add("hidden");
+    }
+    showToast("Started running");
+}
+
+// -------------------------- Websocket Event Handler -----------------------------
 async function handleDagSubscriptionMessage(message) {
     if (message.resource == "task") {
         if (message.field == "status") {
@@ -511,28 +539,7 @@ async function handleDagSubscriptionMessage(message) {
     }
 }
 
-async function runDag() {
-    // Take confirmation
-    if (!confirm(`Are you sure you want to start '${DAG.name}' dag`)) return;
-    const subscriptionEvent = `dag:${DAG_ID}`;
-    subscribe(subscriptionEvent, handleDagSubscriptionMessage);
-
-    const response = await fetch(`${BASE_API_URL}/dags/${DAG_ID}/run`, {
-        method: "POST",
-    });
-    if (response.status != 200) {
-        const { error } = await response.json();
-        showToast(error, "error");
-        return;
-    }
-    document.getElementById("run-dag").classList.add("hidden");
-    document.getElementById("delete-dag").classList.add("hidden");
-    for (let node of document.getElementsByClassName("task-action-buttons")) {
-        node.classList.add("hidden");
-    }
-    showToast("Started running");
-}
-
+// ------------------------------ Event Listeners ---------------------------------
 document
     .getElementById("cancel-task-form")
     .addEventListener("click", closeTaskForm);
