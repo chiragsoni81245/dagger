@@ -11,9 +11,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/chiragsoni81245/dagger/internal/types"
 )
 
-func UpdateTaskStatus(db *sql.DB, taskId int, status string) error {
+func UpdateTaskStatus(db *sql.DB, eventCh chan types.Event, dagId int, taskId int, status string) error {
     result, err := db.Exec(`
     UPDATE task
     SET status=$1
@@ -28,11 +30,18 @@ func UpdateTaskStatus(db *sql.DB, taskId int, status string) error {
     if rowsAffected != 1 {
         return errors.New("error in updating task status")
     }
+    eventCh <- types.Event{
+        Resource: "task",
+        ID: taskId,
+        ParentResource: &types.EventResource{Resource: "dag", ID: dagId},
+        Field: "status",
+        NewValue: status,
+    }
 
     return nil
 }
 
-func UpdateDagStatus(db *sql.DB, dagId int, status string) error {
+func UpdateDagStatus(db *sql.DB, eventCh chan types.Event, dagId int, status string) error {
     result, err := db.Exec(`
     UPDATE dag
     SET status=$1
@@ -46,6 +55,13 @@ func UpdateDagStatus(db *sql.DB, dagId int, status string) error {
 
     if rowsAffected != 1 {
         return errors.New("error in updating dag status")
+    }
+
+    eventCh <- types.Event{
+        Resource: "dag",
+        ID: dagId,
+        Field: "status",
+        NewValue: status,
     }
 
     return nil

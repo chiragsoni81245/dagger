@@ -23,25 +23,35 @@ import (
 type DockerExecutor struct {
     DB *sql.DB
     Logger *logrus.Logger
+    EventCh chan types.Event
 }
 
 func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
     ctx := context.Background()
     var err error
+    var dagId int = 0
     var buildResponse dockerTypes.ImageBuildResponse 
     defer func() {
         if err == nil {
+            de.Logger.Printf("[Task %d] Execution completed", taskId)
+            c <- struct{}{}  
+            close(c)
             return
         }
         de.Logger.Errorf("[Task %d] %s", taskId, err)
-        err := utils.UpdateTaskStatus(de.DB, taskId, "error")
+        err := utils.UpdateTaskStatus(de.DB, de.EventCh, dagId, taskId, "error")
         if err != nil {
             de.Logger.Errorf("[Task %d]: %s", taskId, err)
+            c <- struct{}{}  
+            close(c)
             return
         }
+        c <- struct{}{}  
+        close(c)
         return
     }()
 
+    de.Logger.Printf("[Task %d] Started execution", taskId)
     row := de.DB.QueryRow(`
     SELECT id, dag_id, name, status, parent_id, executor_id, type, definition, created_at
     FROM task
@@ -52,9 +62,9 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
         err = errors.New(fmt.Sprintf("Error in fetching task from db: %s\n", err))
         return
     }
+    dagId = task.DagID
 
-
-    err = utils.UpdateTaskStatus(de.DB, taskId, "running")
+    err = utils.UpdateTaskStatus(de.DB, de.EventCh, dagId, taskId, "running")
     if err != nil {
         return
     }
@@ -167,8 +177,10 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
         return
 	}
 
-    c <- struct{}{}  
-    close(c)
+    err = utils.UpdateTaskStatus(de.DB, de.EventCh, dagId, taskId, "completed")
+    if err != nil {
+        return
+    }
 }
 
 func (de DockerExecutor) RunTask(taskId int) <-chan struct{} {

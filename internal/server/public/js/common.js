@@ -1,4 +1,35 @@
 const BASE_API_URL = "/api/v1";
+const subscriptions = {};
+
+async function subscribe(eventDescriptor, onmessage) {
+    subscriptions[eventDescriptor] = onmessage;
+    // Call websocket for this subscription
+    window.socket.send(
+        JSON.stringify({
+            action: "subscribe",
+            event: eventDescriptor,
+        })
+    );
+}
+
+async function onmessage(e) {
+    let message;
+    try {
+        message = JSON.parse(e.data);
+    } catch {
+        console.log("invalid message from socket", message);
+        return;
+    }
+    subscriptions[message["eventDescriptor"]](message);
+}
+
+async function main() {
+    // Connect to the WebSocket server
+    window.socket = new WebSocket(`ws://${window.location.host}/ws`);
+    window.socket.onmessage = onmessage;
+}
+
+main();
 
 const getTemplateToElement = (tmpl) => {
     const tmplElement = document.createElement("template");
@@ -12,15 +43,23 @@ function showToast(message, type = "success") {
 
     // Define styles for different types
     const typeStyles = {
-        success: "bg-green-500",
-        error: "bg-red-500",
-        warning: "bg-yellow-500",
+        success: "green",
+        error: "red",
+        warning: "yellow",
+    };
+    const icon = {
+        success: "check",
+        error: "times",
+        warning: "exclamation-triangle",
     };
 
     // Create toast element
-    const toast = document.createElement("div");
-    toast.className = `flex items-center text-white px-4 py-2 rounded shadow-md transition-transform transform translate-x-full opacity-0 ${typeStyles[type] || typeStyles.success}`;
-    toast.textContent = message;
+    const toast = getTemplateToElement(`
+        <div class="flex items-center bg-${typeStyles[type]}-100 border border-${typeStyles[type]}-300 rounded-lg shadow-lg p-4">
+            <i class="fa fa-${icon[type]} text-${typeStyles[type]}-800" aria-hidden="true"></i>
+            <p class="text-sm font-medium text-${typeStyles[type]}-800 ml-2">${message}</p> 
+        </div>
+    `);
 
     // Add toast to container
     toastContainer.appendChild(toast);

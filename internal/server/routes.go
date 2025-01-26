@@ -1,41 +1,46 @@
 package server
 
 import (
-	"github.com/gin-gonic/gin"
+	"github.com/chiragsoni81245/dagger/internal/types"
 )
 
-func SetupRoutes(r *gin.Engine) {
-    // UI Routes
-    ui := UIControllers{}
-    {
-        r.GET("/", ui.Dashboard)
-        r.GET("/dags", ui.Dags)
-        r.GET("/dags/:id", ui.Dag)
-        r.GET("/executors", ui.Executors)
-    }
+func SetupRoutes(server *types.Server) {
+	// UI Routes
+	ui := UIControllers{Server: server}
+	{
+		server.Router.GET("/", ui.Dashboard)
+		server.Router.GET("/dags", ui.Dags)
+		server.Router.GET("/dags/:id", ui.Dag)
+		server.Router.GET("/executors", ui.Executors)
+	}
+
+	// Web Socket Route
+	ws := WebSocketControllers{Server: server}
+	{
+		server.Router.GET("/ws", ws.HandleWebSocket)
+	}
 
 	// Group routes under /api/v1
-	v1 := r.Group("/api/v1")
-    api := APIControllers{}
+	v1 := server.Router.Group("/api/v1")
+	api := APIControllers{Server: server}
 	{
 		// DAG routes
 		v1.GET("/dags", api.GetDags)
 		v1.POST("/dags", api.CreateDag)
 		v1.GET("/dags/:id", api.GetDagByID)
-        v1.GET("/dags/:id/tasks", api.GetTasksByDagID)
+		v1.GET("/dags/:id/tasks", api.GetTasksByDagID)
 		v1.DELETE("/dags/:id", api.DeleteDag)
 		v1.POST("/dags/:id/run", api.RunDag)
 
-        // Task routes
-        v1.POST("/tasks", api.CreateTask)
-        v1.GET("/tasks/:id", api.GetTaskByID)
-        v1.DELETE("/tasks/:id", api.DeleteTask)
+		// Task routes
+		v1.POST("/tasks", api.CreateTask)
+		v1.GET("/tasks/:id", api.GetTaskByID)
+		v1.DELETE("/tasks/:id", api.DeleteTask)
 
-        // Executor routes
-        v1.GET("/executors", api.GetExecutors)
-        v1.POST("/executors", api.CreateExecutor)
-        v1.GET("/executors/:id", api.GetExecutorByID)
-        v1.DELETE("/executors/:id", api.DeleteExecutor)
+		// Executor routes
+		v1.GET("/executors", api.GetExecutors)
+		v1.POST("/executors", api.CreateExecutor)
+		v1.GET("/executors/:id", api.GetExecutorByID)
+		v1.DELETE("/executors/:id", api.DeleteExecutor)
 	}
 }
-

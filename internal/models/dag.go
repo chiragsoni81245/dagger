@@ -11,6 +11,7 @@ import (
 type DagOperations struct {
     Logger *logrus.Logger
     DB     *sql.DB
+    EventCh chan types.Event
 }
 
 func (do *DagOperations) GetDags(page int, perPage int) ([]types.Dag, int, error) {
@@ -114,7 +115,7 @@ func (do *DagOperations) RunDag(id int) error {
         return AlreadyInRunningState
     }
 
-    err := controller.RunDag(do.Logger, id)
+    err := controller.RunDag(do.Logger, do.EventCh, id)
     if err != nil {
         return err
     }

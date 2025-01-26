@@ -13,7 +13,7 @@ import (
 )
 
 
-func RunDag(logger *logrus.Logger, id int) error{
+func RunDag(logger *logrus.Logger, eventCh chan types.Event, id int) error{
     var err error
 
     // Generate application configuration
@@ -30,11 +30,7 @@ func RunDag(logger *logrus.Logger, id int) error{
     }
 
     // Move dag into running state
-    _, err = db.Exec(`
-        UPDATE dag
-        SET status='running'
-        WHERE id=$1
-    `, id)
+    err = utils.UpdateDagStatus(db, eventCh, id, "running")
     if err != nil {
         logger.Error(err)
         return err
@@ -91,13 +87,12 @@ func RunDag(logger *logrus.Logger, id int) error{
             if ok {
                 // Start Executing this task, in its specified executor
                 task := tasksIdMap[currentTaskId]
-                c, err := executor.ExecuteTask(logger, db, task.ExecutorID, currentTaskId)
+                c, err := executor.ExecuteTask(logger, db, eventCh, task.ExecutorID, currentTaskId)
                 if err != nil {
                     logger.Error(err)
                     return
                 }
                 runningTasks[currentTaskId] = c 
-                logger.Printf("[Task %d] Started execution", currentTaskId)
             } else {
                 // Wait for one of the tasks to be completed to get its next tasks in queue
                 for {
@@ -112,12 +107,6 @@ func RunDag(logger *logrus.Logger, id int) error{
                     }
 
                     if completedTaskId != -1 {
-                        err = utils.UpdateTaskStatus(db, completedTaskId, "completed")
-                        if err != nil {
-                            logger.Error(err)
-                            return
-                        }
-                        logger.Printf("[Task %d] Execution completed", completedTaskId)
                         delete(runningTasks, completedTaskId)
                         // find all the child tasks of this task, and get them running
                         for _, id := range tasksGraph[completedTaskId] {
@@ -132,7 +121,7 @@ func RunDag(logger *logrus.Logger, id int) error{
         }
         
         
-        err = utils.UpdateDagStatus(db, id, "completed")
+        err = utils.UpdateDagStatus(db, eventCh, id, "completed")
         if err != nil {
             logger.Errorf("[Dag %d] %s", id, err)
             return

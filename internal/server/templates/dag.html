@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Dagger</title>
         <script src="https://cdn.tailwindcss.com"></script>
+        <link rel="stylesheet" href="/static/css/common.css"/>
         <link rel="stylesheet" href="/static/css/dag.css"/>
         <link rel="stylesheet" href="/static/css/font-awesome.min.css"/>
     </head>
@@ -12,19 +13,19 @@
         <input type="hidden" id="dag-id" value="{{ .ID }}" />
 
         <!-- Navbar -->
-        <nav class="bg-blue-600 p-4">
-            <div class="container mx-auto flex justify-between items-center">
+        <nav class="p-4">
+            <div class="flex justify-between items-center mx-2">
                 <a href="/" class="text-white text-2xl font-semibold">Dagger</a>
                 <div class="space-x-4">
-                    <a href="/dags" class="text-white hover:text-gray-200">DAGs</a>
-                    <a href="/executors" class="text-white hover:text-gray-200">Executors</a>
+                    <a href="/dags" class="text-white font-bold hover:text-gray-200">DAGs</a>
+                    <a href="/executors" class="text-white font-bold hover:text-gray-200">Executors</a>
                 </div>
             </div>
         </nav>
 
         <!-- Dag Metadata and Action -->
         <div class="flex flex-row justify-end items-center my-2 mx-4">
-            <p id="dag-name" class="text-lg font-bold mr-auto"></p>
+            <p id="dag-name" class="text-lg font-bold mr-auto text-[#333333]"></p>
             <button id="run-dag" type="button" class="px-2 py-2 text-lg text-green-600 hover:text-green-700 transition-colors hidden">
                 <i class="fa fa-play-circle-o" aria-hidden="true"></i>
             </button>
@@ -82,7 +83,7 @@
         </div>
 
         <!-- Toast Container -->
-        <div id="toast-container" class="fixed bottom-4 right-4 space-y-4 z-50"></div>
+        <div id="toast-container" class="fixed bottom-4 right-4 space-y-4 z-50 flex flex-col"></div>
 
         <script src="/static/js/common.js"></script>
         <script src="/static/js/dag.js"></script>

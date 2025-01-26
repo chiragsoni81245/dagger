@@ -13,7 +13,7 @@ type Executor interface {
     RunTask(int) <-chan struct{}
 }
 
-func ExecuteTask(logger *logrus.Logger, db *sql.DB, executorId int, taskId int) (<-chan struct{}, error){
+func ExecuteTask(logger *logrus.Logger, db *sql.DB, eventCh chan types.Event, executorId int, taskId int) (<-chan struct{}, error){
     row := db.QueryRow(`
         SELECT name, type, config
         FROM executor
@@ -21,7 +21,6 @@ func ExecuteTask(logger *logrus.Logger, db *sql.DB, executorId int, taskId int) 
     `, executorId)
 
     var executor types.Executor
-    executor.ID = executorId
     if err := row.Scan(&executor.Name, &executor.Type, &executor.Config); err != nil {
         return nil, err
     }
@@ -33,6 +32,7 @@ func ExecuteTask(logger *logrus.Logger, db *sql.DB, executorId int, taskId int) 
         e = DockerExecutor{
             DB: db,
             Logger: logger,
+            EventCh: eventCh,
         }
     default:
         err := errors.New(fmt.Sprintf("[Task %d] Invalid executor selected", taskId))

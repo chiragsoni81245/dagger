@@ -9,19 +9,21 @@ import (
 	"strconv"
 
 	"github.com/chiragsoni81245/dagger/internal/models"
+	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
 )
 
 
-type APIControllers struct {}
+type APIControllers struct {
+    Server *types.Server
+}
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------- For Dags -------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 func (apiC *APIControllers) GetDags(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     do := models.DagOperations{Logger: logger, DB: db}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -37,8 +39,8 @@ func (apiC *APIControllers) GetDags(c *gin.Context) {
 }
 
 func (apiC *APIControllers) GetDagByID(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     do := models.DagOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -61,8 +63,8 @@ func (apiC *APIControllers) GetDagByID(c *gin.Context) {
 }
 
 func (apiC *APIControllers) CreateDag(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     do := models.DagOperations{Logger: logger, DB: db}
 
 	var input struct {
@@ -84,8 +86,8 @@ func (apiC *APIControllers) CreateDag(c *gin.Context) {
 }
 
 func (apiC *APIControllers) DeleteDag(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     do := models.DagOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -106,9 +108,9 @@ func (apiC *APIControllers) DeleteDag(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Dag deleted"})
 }
 func (apiC *APIControllers) RunDag(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
-    do := models.DagOperations{Logger: logger, DB: db}
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
+    do := models.DagOperations{Logger: logger, DB: db, EventCh: apiC.Server.EventCh}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -138,8 +140,8 @@ func (apiC *APIControllers) RunDag(c *gin.Context) {
 // --------------------------- For Tasks ------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 func (apiC *APIControllers) GetTasksByDagID(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     to := models.TaskOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -162,8 +164,8 @@ func (apiC *APIControllers) GetTasksByDagID(c *gin.Context) {
 }
 
 func (apiC *APIControllers) GetTaskByID(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     to := models.TaskOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -186,8 +188,8 @@ func (apiC *APIControllers) GetTaskByID(c *gin.Context) {
 }
 
 func (apiC *APIControllers) CreateTask(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     to := models.TaskOperations{Logger: logger, DB: db}
 
 	var input struct {
@@ -261,13 +263,15 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
     err = c.SaveUploadedFile(codeFilesZip, taskDir+"/code.zip")
     if err != nil {
         if txnErr := txn.Rollback(); txnErr != nil {
-            logger.Error(err)
+            logger.Error(txnErr)
+            return
         }
+        logger.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
 		return
     }
 
-    txn.Commit()
+    err = txn.Commit()
     if err != nil {
         logger.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
@@ -277,8 +281,8 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
 }
 
 func (apiC *APIControllers) DeleteTask(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     to := models.TaskOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -306,7 +310,7 @@ func (apiC *APIControllers) DeleteTask(c *gin.Context) {
 		return
     }
 
-    txn.Commit()
+    err = txn.Commit()
     if err != nil {
         logger.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task"})
@@ -320,8 +324,8 @@ func (apiC *APIControllers) DeleteTask(c *gin.Context) {
 // --------------------------- For Executors --------------------------------------------------------
 // --------------------------------------------------------------------------------------------------
 func (apiC *APIControllers) GetExecutors(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     eo := models.ExecutorOperations{Logger: logger, DB: db}
 
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -337,8 +341,8 @@ func (apiC *APIControllers) GetExecutors(c *gin.Context) {
 }
 
 func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     to := models.ExecutorOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -361,8 +365,8 @@ func (apiC *APIControllers) GetExecutorByID(c *gin.Context) {
 }
 
 func (apiC *APIControllers) CreateExecutor(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     to := models.ExecutorOperations{Logger: logger, DB: db}
 
 	var input struct {
@@ -386,8 +390,8 @@ func (apiC *APIControllers) CreateExecutor(c *gin.Context) {
 }
 
 func (apiC *APIControllers) DeleteExecutor(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
-    db := c.MustGet("db").(*sql.DB)
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
     to := models.ExecutorOperations{Logger: logger, DB: db}
 
 	id, err := strconv.Atoi(c.Param("id"))

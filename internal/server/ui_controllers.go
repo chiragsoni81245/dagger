@@ -4,11 +4,14 @@ import (
 	"html/template"
 	"strconv"
 
+	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
-type UIControllers struct {}
+type UIControllers struct {
+    Server *types.Server
+}
 
 type HTTPError struct {
     StatusCode int
@@ -27,7 +30,7 @@ func serveError(logger *logrus.Logger, c *gin.Context, httpError HTTPError) {
 }
 
 func (uc *UIControllers) Dashboard(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
+    logger := uc.Server.Logger
     tmpl, err := template.ParseFiles("internal/server/templates/index.html")
     if err != nil {
         logger.Error(err)
@@ -39,7 +42,7 @@ func (uc *UIControllers) Dashboard(c *gin.Context) {
 }
 
 func (uc *UIControllers) Dags(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
+    logger := uc.Server.Logger
     tmpl, err := template.ParseFiles("internal/server/templates/dags.html")
     if err != nil {
         logger.Error(err)
@@ -51,7 +54,7 @@ func (uc *UIControllers) Dags(c *gin.Context) {
 }
 
 func (uc *UIControllers) Dag(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
+    logger := uc.Server.Logger
     tmpl, err := template.ParseFiles("internal/server/templates/dag.html")
     if err != nil {
         logger.Error(err)
@@ -74,7 +77,7 @@ func (uc *UIControllers) Dag(c *gin.Context) {
 }
 
 func (uc *UIControllers) Executors(c *gin.Context) {
-    logger := c.MustGet("logger").(*logrus.Logger)
+    logger := uc.Server.Logger
     tmpl, err := template.ParseFiles("internal/server/templates/executors.html")
     if err != nil {
         logger.Error(err)
