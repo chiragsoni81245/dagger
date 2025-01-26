@@ -26,27 +26,27 @@
         <div class="container mx-auto mt-10">
             <div id="no-result-found" class="flex flex-col justify-center items-center hidden">
                 <h2 class="text-center mb-3">No DAG available</h2>
-                <button class="add-dag bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 w-[20%]">Add Dag</button>
+                <button class="add-dag bg-blue-500 text-white font-semibold m-2 py-2 ml-auto rounded hover:bg-blue-600 w-[15%]">Add Dag</button>
             </div>
-            <div id="result-found" class="flex flex-col bg-white shadow-md rounded my-6 hidden">
-                <button class="add-dag bg-blue-500 text-white px-3 py-1 m-2 ml-auto rounded hover:bg-blue-600 w-[20%]">Add Dag</button>
+            <div id="result-found" class="flex flex-col rounded my-6 hidden">
+                <button class="add-dag bg-blue-500 text-white font-semibold m-2 py-2 ml-auto rounded hover:bg-blue-600 w-[15%]">Add Dag</button>
                 <table class="min-w-full table-auto">
                     <thead>
                         <tr class="bg-gray-600 text-white uppercase text-sm leading-normal">
                             <th class="py-3 px-6 text-left">ID</th>
                             <th class="py-3 px-6 text-left">Name</th>
                             <th class="py-3 px-6 text-left">Status</th>
-                            <th class="py-3 px-6 text-left">Pending Tasks</th>
-                            <th class="py-3 px-6 text-left">Completed Tasks</th>
-                            <th class="py-3 px-6 text-left">Inprogress Tasks</th>
+                            <th class="py-3 px-6 bg-[#ffc107] text-left">Pending Tasks</th>
+                            <th class="py-3 px-6 bg-[#4DA8DA] text-left">Running Tasks</th>
+                            <th class="py-3 px-6 bg-green-800 text-left">Completed Tasks</th>
                             <th class="py-3 px-6 text-left">Created At</th>
                         </tr>
                     </thead>
-                    <tbody id="dags" class="text-gray-600 text-sm font-light">
+                    <tbody id="dags" class="text-gray-600 font-normal">
                         <!-- Table rows will be injected here -->
                     </tbody>
                 </table>
-                <div id="pagination-control" class="flex justify-center items-center px-5 py-3 bg-gray-100 border-t">
+                <div id="pagination-control" class="flex justify-center shadow-md items-center px-5 py-3 bg-gray-100 border-t">
                     <button id="prev-btn" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Previous</button>
                     <span id="pagination-info" class="text-gray-600"></span>
                     <button id="next-btn" class="bg-gray-500 text-white px-3 py-1 rounded hover:bg-gray-600">Next</button>
@@ -72,7 +72,7 @@
         </div>
 
         <!-- Toast Container -->
-        <div id="toast-container" class="fixed bottom-4 right-4 space-y-4 z-50"></div>
+        <div id="toast-container" class="fixed bottom-4 right-4 space-y-4 z-50 flex flex-col"></div>
 
         <script src="/static/js/common.js"></script>
         <script src="/static/js/dags.js"></script>

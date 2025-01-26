@@ -7,7 +7,7 @@ type Dag struct {
 	CreatedAt string `json:"created_at"`
     PendingTasks int `json:"pending_tasks"`
     CompletedTasks int `json:"completed_tasks"`
-    ProcessingTasks int `json:"processing_tasks"`
+    RunningTasks int `json:"running_tasks"`
 }
 
 type DagWithTasks struct {

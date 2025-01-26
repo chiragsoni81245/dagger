@@ -105,8 +105,8 @@ function renderTable({ executors, total_executors }) {
         tr.innerHTML = `
       <td class="py-3 px-6 text-left">${row.id}</td>
       <td class="py-3 px-6 text-left">${row.name}</td>
-      <td class="py-3 px-6 text-left">${row.type}</td>
-      <td class="py-3 px-6 text-left">${row.created_at}</td>
+      <td class="py-3 px-6 text-left">${row.type.toUpperCase()}</td>
+      <td class="py-3 px-6 text-left">${new Date(row.created_at).toLocaleString()}</td>
     `;
         tableBody.appendChild(tr);
     });

@@ -23,17 +23,32 @@ func (do *DagOperations) GetDags(page int, perPage int) ([]types.Dag, int, error
     total_query_row.Scan(&total_dags)
 
 	rows, err := do.DB.Query(`
-		SELECT d.id, d.name, d.status, d.created_at, coalesce(t.pending_tasks, 0) 
-		FROM dag as d
-        LEFT JOIN (
-            SELECT 
-                dag_id,
-                COUNT(*) OVER(partition by status) as pending_tasks 
-            FROM task
-            GROUP BY dag_id, status
-        ) as t ON t.dag_id=d.id
-		ORDER BY d.created_at DESC 
-		LIMIT $1 OFFSET $2`, perPage, (page-1)*perPage)
+    WITH task_counts AS (
+    	SELECT 
+    		dag_id,
+    		status,
+    		COUNT(*) as count 
+    	FROM task
+    	GROUP BY status, dag_id
+    )
+    SELECT 
+    		d.id, 
+    		d.name, 
+    		d.status, 
+    		d.created_at, 
+    		coalesce(tc_total.count, 0) - coalesce(tc_completed.count, 0) as pending_tasks, 
+    		coalesce(tc_running.count, 0) as running_tasks, 
+    		coalesce(tc_completed.count, 0) as completed_tasks 
+    FROM dag as d
+    LEFT JOIN (
+    	SELECT dag_id, count(*)
+    	FROM task
+    	GROUP BY dag_id
+    ) as tc_total ON tc_total.dag_id=d.id
+    LEFT JOIN task_counts as tc_running ON tc_running.dag_id=d.id and tc_running.status='running'
+    LEFT JOIN task_counts as tc_completed ON tc_completed.dag_id=d.id and tc_completed.status='completed'
+    ORDER BY d.created_at DESC 
+    LIMIT $1 OFFSET $2`, perPage, (page-1)*perPage)
 	if err != nil {
         do.Logger.Error(err)
 		return nil, 0, err
@@ -43,7 +58,7 @@ func (do *DagOperations) GetDags(page int, perPage int) ([]types.Dag, int, error
 	var dags []types.Dag
 	for rows.Next() {
 		var dag types.Dag
-		if err := rows.Scan(&dag.ID, &dag.Name, &dag.Status, &dag.CreatedAt, &dag.PendingTasks); err != nil {
+		if err := rows.Scan(&dag.ID, &dag.Name, &dag.Status, &dag.CreatedAt, &dag.PendingTasks, &dag.RunningTasks, &dag.CompletedTasks); err != nil {
 			do.Logger.Println("Error scanning dag:", err)
 			return nil, 0, err
 		}
