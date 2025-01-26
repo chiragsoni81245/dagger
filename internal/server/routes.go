@@ -36,6 +36,8 @@ func SetupRoutes(server *types.Server) {
 		v1.POST("/tasks", api.CreateTask)
 		v1.GET("/tasks/:id", api.GetTaskByID)
 		v1.DELETE("/tasks/:id", api.DeleteTask)
+		v1.GET("/tasks/:id/logs", api.GetTaskLogs)
+        v1.GET("/tasks/:id/logs/:name", api.GetTaskLogByName)
 
 		// Executor routes
 		v1.GET("/executors", api.GetExecutors)

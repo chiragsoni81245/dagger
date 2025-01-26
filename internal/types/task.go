@@ -11,3 +11,8 @@ type Task struct {
 	Definition  string
 	CreatedAt   string `json:"created_at"`
 }
+
+type TaskLog struct {
+    Name string `json:"name"`
+    URL  string `json:"url"`
+}

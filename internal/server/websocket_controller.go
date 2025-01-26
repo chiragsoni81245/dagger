@@ -35,8 +35,6 @@ func (wsC *WebSocketControllers) HandleWebSocket(c *gin.Context) {
 	}
 	defer conn.Close()
 
-	logger.Println("Client connected")
-
     type webSocketMessage struct {
         Action string `json:"action"`
         EventDescriptor  string `json:"event"`
@@ -53,7 +51,7 @@ func (wsC *WebSocketControllers) HandleWebSocket(c *gin.Context) {
                 wsC.Server.Mux.Unlock()
                 break
             }
-			logger.Println("Error reading message:", err)
+			logger.Errorln("Error reading message:", err)
 			break
 		}
         
@@ -65,7 +63,7 @@ func (wsC *WebSocketControllers) HandleWebSocket(c *gin.Context) {
         resourceName := eventParts[0]
         resourceId, err := strconv.Atoi(eventParts[1])
         if err != nil {
-            logger.Println("Error in websocket message event parsing:", err)
+            logger.Errorln("Error in websocket message event parsing:", err)
             break
         }
 
@@ -96,8 +94,5 @@ func (wsC *WebSocketControllers) HandleWebSocket(c *gin.Context) {
             }
         }
         wsC.Server.Mux.Unlock()
-        
-		// Log the received message
-		logger.Printf("Received message: %s", message)
 	}
 }

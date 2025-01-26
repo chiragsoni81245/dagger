@@ -28,20 +28,24 @@ type DockerExecutor struct {
 
 func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
     ctx := context.Background()
+    // --------------------------- Cleanup Setup -------------------------------------------------- 
+    logger := logrus.New()
+	logger.SetOutput(de.Logger.Writer())
     var err error
     var dagId int = 0
+    var logFile *os.File
     var buildResponse dockerTypes.ImageBuildResponse 
     defer func() {
         if err == nil {
-            de.Logger.Printf("[Task %d] Execution completed", taskId)
+            logger.Printf("[Task %d] Execution completed", taskId)
             c <- struct{}{}  
             close(c)
             return
         }
-        de.Logger.Errorf("[Task %d] %s", taskId, err)
+        logger.Errorf("[Task %d] %s", taskId, err)
         err := utils.UpdateTaskStatus(de.DB, de.EventCh, dagId, taskId, "error")
         if err != nil {
-            de.Logger.Errorf("[Task %d]: %s", taskId, err)
+            logger.Errorf("[Task %d]: %s", taskId, err)
             c <- struct{}{}  
             close(c)
             return
@@ -51,7 +55,34 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
         return
     }()
 
-    de.Logger.Printf("[Task %d] Started execution", taskId)
+
+    // ----------------------------- Logging File Setup --------------------------------------------
+    logDir := fmt.Sprintf("logs/task-%d", taskId)
+    logFilePath := fmt.Sprintf("%s/execution.log", logDir)
+    err = os.MkdirAll(logDir, 0755)
+    if err != nil {
+        return
+    }
+
+	// Open a file for logging
+	logFile, err = os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		de.Logger.Errorf("Failed to open log file: %v", err)
+        return
+	}
+	multiWriter := io.MultiWriter(de.Logger.Writer(), logFile)
+
+	// Set the output for the logger
+	logger.SetOutput(multiWriter)
+
+	// Optionally set the log format
+	logger.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp: true,
+	})
+
+
+    // ----------------------------- Actual Logic --------------------------------------------------
+    logger.Printf("[Task %d] Started execution", taskId)
     row := de.DB.QueryRow(`
     SELECT id, dag_id, name, status, parent_id, executor_id, type, definition, created_at
     FROM task
@@ -88,10 +119,13 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
 
     // Create a tarball of the Dockerfile
     tarBuf := new(bytes.Buffer)
-	if err = utils.CreateTarFromZip(sourceCodeZip, tarBuf, map[string]string{
-        taskDefination.Dockerfile: "Dockerfile", 
-    }); err != nil {
-		err = fmt.Errorf("Error creating tarball from zip: %v", err)
+    renameFiles := map[string]string{}
+    if taskDefination.Dockerfile != "" {
+        renameFiles[taskDefination.Dockerfile] = "Dockerfile" 
+    }
+    err = utils.CreateTarFromZip(sourceCodeZip, tarBuf, renameFiles)
+    if err != nil {
+        err = fmt.Errorf("Error creating tarball from zip: %v", err)
         return
 	}
 
@@ -103,12 +137,6 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
 	if err != nil {
         return
 	}
-
-    logDir := fmt.Sprintf("logs/task-%d", taskId)
-    err = os.MkdirAll(logDir, 0755)
-    if err != nil {
-        return
-    }
 
     imageBuildLogFilePath := fmt.Sprintf("%s/image-build.log", logDir)
 	imageBuildLogFile, err := os.Create(imageBuildLogFilePath)
@@ -122,7 +150,7 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
 	}
     buildResponse.Body.Close()
     imageBuildLogFile.Close()
-    de.Logger.Infof("[Task %d] Docker image '%s' built successfully", taskId, imageName)
+    logger.Infof("[Task %d] Docker image '%s' built successfully", taskId, imageName)
 
     // Running container with this image
     resp, err := cli.ContainerCreate(ctx, &container.Config{
@@ -131,10 +159,13 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
     if err != nil {
         return
     }
+    logger.Printf("[Task %d] Created container %s", taskId, resp.ID)
     if err = cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
         return
 	}
+    logger.Printf("[Task %d] Started container %s", taskId, resp.ID)
 
+    logger.Printf("[Task %d] Waiting for task to complete...", taskId)
     // Wait for container to task to complete
     statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
@@ -167,6 +198,7 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
 		err = fmt.Errorf("Error removing container: %v", err)
         return
 	}
+    logger.Printf("[Task %d] Container %s removed", taskId, resp.ID)
 
 	// Cleanup: Remove the image after the container is removed
 	if _, err = cli.ImageRemove(ctx, imageName, image.RemoveOptions{
@@ -176,6 +208,7 @@ func (de DockerExecutor) runTask(c chan struct{}, taskId int) {
 		err = fmt.Errorf("Error removing image: %v", err)
         return
 	}
+    logger.Printf("[Task %d] Image %s removed", taskId, imageName)
 
     err = utils.UpdateTaskStatus(de.DB, de.EventCh, dagId, taskId, "completed")
     if err != nil {

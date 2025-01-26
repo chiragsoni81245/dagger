@@ -319,6 +319,42 @@ func (apiC *APIControllers) DeleteTask(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Task deleted"})
 }
 
+func (apiC *APIControllers) GetTaskLogs(c *gin.Context) {
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
+    to := models.TaskOperations{Logger: logger, DB: db}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+    taskLogs, err := to.GetTaskLogs(id)
+	if err != nil {
+        if err == models.TaskIsStillRunning || err == models.TaskNotStarted {
+		    c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+            return
+        }
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get task logs"})
+		return
+	}
+
+    c.JSON(http.StatusOK, gin.H{"logs": taskLogs})
+}
+
+func (apiC *APIControllers) GetTaskLogByName(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+    logName := c.Param("name")
+
+    logFilePath := fmt.Sprintf("logs/task-%d/%s.log", id, logName)
+    c.File(logFilePath)
+}
+
 
 // --------------------------------------------------------------------------------------------------
 // --------------------------- For Executors --------------------------------------------------------

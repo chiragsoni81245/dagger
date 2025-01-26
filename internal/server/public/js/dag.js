@@ -1,4 +1,5 @@
 const DAG_CONTAINER = document.getElementById("dag-container");
+const DAG_HEADER = document.getElementById("dag-header");
 const MARGIN_IN_TASKS = 20;
 let DAG;
 const DAG_ID = parseInt(document.getElementById("dag-id").value);
@@ -56,7 +57,9 @@ async function deleteTask() {
     renderDag(await getDag());
 }
 
-async function renderAddTaskForm() {
+async function renderTaskForm(e) {
+    e.stopPropagation();
+    const action = this.classList.contains("edit-task") ? "Edit" : "Add";
     const TASK_FORM_MODAL = document.getElementById("task-form-modal");
     let parent_id = this.dataset["parent_id"];
     TASK_FORM_MODAL.dataset["parent_id"] = parent_id;
@@ -66,19 +69,8 @@ async function renderAddTaskForm() {
         return;
     }
 
-    // Reset All Field Values
-    for (let input of TASK_FORM_MODAL.getElementsByTagName("input")) {
-        input.value = "";
-    }
-    for (let input of TASK_FORM_MODAL.getElementsByTagName("textarea")) {
-        input.value = "";
-    }
-    for (let input of TASK_FORM_MODAL.getElementsByTagName("select")) {
-        input.value = "";
-    }
-
     // Set Title
-    document.getElementById("task-form-title").textContent = "Add Task";
+    document.getElementById("task-form-title").textContent = `${action} Task`;
 
     // Set Executors
     const EXECUTOR_CONTAINER = document.getElementById("task-executor-id");
@@ -96,12 +88,149 @@ async function renderAddTaskForm() {
         );
     }
 
+    if (action == "Add") {
+        // Reset All Field Values
+        for (let input of TASK_FORM_MODAL.getElementsByTagName("input")) {
+            input.value = "";
+        }
+        for (let input of TASK_FORM_MODAL.getElementsByTagName("textarea")) {
+            input.value = "";
+        }
+        for (let input of TASK_FORM_MODAL.getElementsByTagName("select")) {
+            input.value = "";
+        }
+    } else {
+    }
+
     TASK_FORM_MODAL.classList.remove("hidden");
 }
 
 function closeTaskForm() {
     const TASK_FORM_MODAL = document.getElementById("task-form-modal");
     TASK_FORM_MODAL.classList.add("hidden");
+}
+
+async function showTaskDetails(e) {
+    e.stopPropagation();
+    if (
+        !this.querySelector(".status-completed") &&
+        !this.querySelector(".status-error")
+    ) {
+        return;
+    }
+    const TASK_DETAILS_MODAL = document.getElementById("task-details-modal");
+    TASK_DETAILS_MODAL.classList.remove("hidden");
+
+    TASK_DETAILS_MODAL.querySelector("h2.title").textContent =
+        `${this.querySelector("p.name").textContent} Logs`;
+
+    const detailsBlock = TASK_DETAILS_MODAL.querySelector("div.details");
+    const taskId = this.id.split("-")[1];
+    const logs = await getTaskLogs(taskId);
+
+    detailsBlock.innerHTML = "";
+    if (logs.length == 0) {
+        detailsBlock.appendChild(getTemplateToElement(`<p>No logs found</p>`));
+        return;
+    }
+
+    detailsBlock.appendChild(
+        getTemplateToElement(
+            `<i class="expand fa fa-expand cursor-pointer border-2 px-2 py-1 rounded absolute right-1 top-1" aria-hidden="true"></i>`
+        )
+    );
+    detailsBlock.appendChild(
+        getTemplateToElement(`
+    <div class="tab-links border-b border-gray-200">
+        <nav class="flex space-x-4">
+            ${Array.from(logs)
+                .map(
+                    (log, index) => `
+                <button 
+                    class="tab-link ${index == 0 ? "border-blue-500 text-blue-500" : "text-gray-600"} py-2 px-4 border-b-2 border-transparent hover:border-blue-500 focus:outline-none focus:border-blue-500" 
+                    data-tab="task-log-${log.name}"
+                >
+                    ${log.name}
+                </button>
+            `
+                )
+                .join("")}
+        </nav>
+    </div>`)
+    );
+
+    for (let i = 0; i < logs.length; i++) {
+        detailsBlock.appendChild(
+            getTemplateToElement(`
+                <div id="task-log-${logs[i].name}" class="tab-content ${i == 0 ? "" : "hidden"}">
+                    <pre class="bg-gray-100 p-4 overflow-auto h-[300px]">${await getFileContent(logs[i].url)}</pre>
+                </div>
+            `)
+        );
+    }
+
+    const tabLinks = document.querySelectorAll(".tab-link");
+    const tabContents = document.querySelectorAll(".tab-content");
+
+    detailsBlock
+        .querySelector("i.expand")
+        .addEventListener("click", function () {
+            if (this.classList.contains("fa-expand")) {
+                this.classList.remove("fa-expand");
+                this.classList.add("fa-compress");
+                detailsBlock.style["position"] = "fixed";
+                detailsBlock.style["inset"] = "0";
+                detailsBlock.style["background-color"] = "white";
+                for (let pre of detailsBlock.getElementsByTagName("pre")) {
+                    pre.classList.remove("h-[300px]");
+                    pre.classList.add(
+                        `h-[${window.innerHeight - detailsBlock.querySelector("div.tab-links").clientHeight}px]`
+                    );
+                }
+            } else {
+                this.classList.remove("fa-compress");
+                this.classList.add("fa-expand");
+                detailsBlock.style["position"] = "relative";
+                delete detailsBlock.style["inset"];
+                delete detailsBlock.style["background-color"];
+                for (let pre of detailsBlock.getElementsByTagName("pre")) {
+                    pre.classList.remove(
+                        `h-[${window.innerHeight - detailsBlock.querySelector("div.tab-links").clientHeight}px]`
+                    );
+                    pre.classList.add("h-[300px]");
+                }
+            }
+        });
+
+    tabLinks.forEach((link) => {
+        link.addEventListener("click", () => {
+            // Hide all tab contents
+            tabContents.forEach((content) => content.classList.add("hidden"));
+
+            // Remove active state from all tabs
+            tabLinks.forEach((tab) =>
+                tab.classList.remove(
+                    "border-blue-500",
+                    "text-blue-500",
+                    "text-gray-600"
+                )
+            );
+
+            // Show the clicked tab content
+            const tabId = link.getAttribute("data-tab");
+            document.getElementById(tabId).classList.remove("hidden");
+
+            // Set active state on the clicked tab
+            link.classList.add("border-blue-500", "text-blue-500");
+        });
+    });
+
+    detailsBlock.querySelector(".tab-link").focus();
+}
+
+function closeTaskDetails() {
+    const TASK_DETAILS_MODAL = document.getElementById("task-details-modal");
+    TASK_DETAILS_MODAL.classList.add("hidden");
 }
 
 function getTaskStatusElementString(status) {
@@ -112,17 +241,17 @@ function getTaskStatusElementString(status) {
             </div>
             `,
         running: `
-            <div class="flex flex-row text-white">
-            <i class="fa fa-spinner" aria-hidden="true"></i>
+            <div class="status-running flex flex-row text-white">
+            <i class="fa fa-spinner spin" aria-hidden="true"></i>
             </div>
             `,
         error: `
-            <div class="flex flex-row text-red-300">
+            <div class="status-error flex flex-row text-red-300">
             <i class="fa fa-exclamation-circle" aria-hidden="true"></i>
             </div>
             `,
         completed: `
-            <div class="flex flex-row text-green-300">
+            <div class="status-completed flex flex-row text-green-300">
             <i class="fa fa-check-circle-o" aria-hidden="true"></i>
             </div>
             `,
@@ -145,20 +274,23 @@ function getTaskNode(task, level, prevTaskId) {
     return getTemplateToElement(`
         <div 
             id="task-${task.id}" 
-            class="task bg-[#4DA8DA] text-white justify-center" 
+        class="task bg-[#4DA8DA] text-white justify-center ${["completed", "error"].indexOf(task.status) != -1 ? "cursor-pointer" : ""}" 
             data-level="${level}" 
             style="left: ${left}px; top: ${top}px"
         >
             <div class="flex flex-row justify-start items-center mb-2">
                 <img src="/static/images/${task.type}-icon.png"/>
-                <p class="ml-auto">${task.name}</p>
+                <p class="name ml-auto">${task.name}</p>
             </div>
             <div class="flex flex-row justify-between items-end">
                 <div id="task-${task.id}-status">
                     ${getTaskStatusElementString(task.status)}
                 </div>
                 <div id="task-${task.id}-actions" class="task-action-buttons flex items-end ${DAG.status != "created" ? "hidden" : ""}">
-                    <button class="delete-task flex text-[#FF6B6B] text-base hover:text-red-700 focus:outline-none" data-task-id="${task.id}" data-task-name="${task.name}">
+                    <button class="edit-task flex text-white text-base hover:text-grey-300 focus:outline-none hidden" data-task-id="${task.id}" data-task-name="${task.name}">
+                        <i class="fa fa-edit" aria-hidden="true"></i>
+                    </button>
+                    <button class="delete-task flex ml-3 text-[#FF6B6B] text-base hover:text-red-700 focus:outline-none" data-task-id="${task.id}" data-task-name="${task.name}">
                         <i class="fa fa-trash" aria-hidden="true"></i>
                     </button>
                     <button class="add-task flex ml-3 text-white text-base hover:text-gray-300 focus:outline-none" data-parent_id="${task.id}">
@@ -214,7 +346,7 @@ async function renderDag(dag) {
                 <p class="mx-2">Add Task</p>
             </div>
         `);
-        addTaskNode.addEventListener("click", renderAddTaskForm);
+        addTaskNode.addEventListener("click", renderTaskForm);
         DAG_CONTAINER.appendChild(addTaskNode);
         return;
     }
@@ -257,8 +389,14 @@ async function renderDag(dag) {
         const taskNode = getTaskNode(task, level, prevTaskId);
         DAG_CONTAINER.appendChild(taskNode);
         document
+            .querySelector(`div#task-${task.id}`)
+            ?.addEventListener("click", showTaskDetails);
+        document
             .querySelector(`div#task-${task.id} button.add-task`)
-            ?.addEventListener("click", renderAddTaskForm);
+            ?.addEventListener("click", renderTaskForm);
+        document
+            .querySelector(`div#task-${task.id} button.edit-task`)
+            ?.addEventListener("click", renderTaskForm);
         document
             .querySelector(`div#task-${task.id} button.delete-task`)
             ?.addEventListener("click", deleteTask);
@@ -301,7 +439,38 @@ async function getDag() {
     return dag;
 }
 
-async function deleteDag() {
+async function getTask(taskId) {
+    const response = await fetch(`${BASE_API_URL}/tasks/${taskId}`);
+    if (response.status != 200) {
+        if (response.status == 404) {
+            showToast("No task found", "error");
+        } else {
+            const { error } = await response.json();
+            showToast(error, "error");
+        }
+        return;
+    }
+    const { task } = await response.json();
+    return task;
+}
+
+async function getTaskLogs(taskId) {
+    const response = await fetch(`${BASE_API_URL}/tasks/${taskId}/logs`);
+    if (response.status != 200) {
+        if (response.status == 404) {
+            showToast("No logs found for task", "error");
+        } else {
+            const { error } = await response.json();
+            showToast(error, "error");
+        }
+        return [];
+    }
+    const { logs } = await response.json();
+    return logs;
+}
+
+async function deleteDag(e) {
+    e.stopPropagation();
     // Take confirmation
     if (!confirm(`Are you sure you want to delete '${DAG.name}' dag`)) return;
     const response = await fetch(`${BASE_API_URL}/dags/${DAG_ID}`, {
@@ -324,6 +493,11 @@ async function handleDagSubscriptionMessage(message) {
             taskStatusBlock.innerHTML = getTaskStatusElementString(
                 message.newValue
             ).trim();
+            if (["completed", "error"].indexOf(message.newValue) != -1) {
+                document
+                    .getElementById(`task-${message.id}`)
+                    .classList.add("cursor-pointer");
+            }
         }
     } else if (message.resource == "dag") {
         if (message.field == "status") {
@@ -367,6 +541,10 @@ document
     .getElementById("submit-task-form")
     .addEventListener("click", submitTask);
 
+document
+    .getElementById("task-details-close")
+    .addEventListener("click", closeTaskDetails);
+
 document.getElementById("delete-dag").addEventListener("click", deleteDag);
 document.getElementById("run-dag").addEventListener("click", runDag);
 document.getElementById("task-type").addEventListener("change", (e) => {
@@ -383,15 +561,15 @@ document.getElementById("task-type").addEventListener("change", (e) => {
 });
 
 async function main() {
-    DAG_CONTAINER.style["height"] =
-        `${window.innerHeight - NAV.clientHeight}px`;
     const dag = await getDag();
 
     // Subscribe to dag events if dag is in running state
     if (dag.status == "running") {
         subscribe(`dag:${DAG_ID}`, handleDagSubscriptionMessage);
     }
-    renderDag(dag);
+    await renderDag(dag);
+    DAG_CONTAINER.style["height"] =
+        `${window.innerHeight - NAV.clientHeight - DAG_HEADER.clientHeight}px`;
 }
 
 main();

@@ -24,23 +24,25 @@
         </nav>
 
         <!-- Dag Metadata and Action -->
-        <div class="flex flex-row justify-end items-center my-2 mx-4">
-            <p id="dag-name" class="text-lg font-bold mr-auto text-[#333333]"></p>
-            <button id="run-dag" type="button" class="px-2 py-2 text-lg text-green-600 hover:text-green-700 transition-colors hidden">
-                <i class="fa fa-play-circle-o" aria-hidden="true"></i>
-            </button>
-            <button id="delete-dag" type="button" class="px-2 py-2 ml-1 text-lg text-red-600 hover:text-red-700 transition-colors hidden">
-                <i class="fa fa-trash" aria-hidden="true"></i>
-            </button>
+        <div id="dag-header">
+            <div class="flex flex-row justify-end items-center mx-4">
+                <p id="dag-name" class="text-lg font-bold mr-auto text-[#333333]"></p>
+                <button id="run-dag" type="button" class="px-2 py-2 text-lg text-green-600 hover:text-green-700 transition-colors hidden">
+                    <i class="fa fa-play-circle-o" aria-hidden="true"></i>
+                </button>
+                <button id="delete-dag" type="button" class="px-2 py-2 ml-1 text-lg text-red-600 hover:text-red-700 transition-colors hidden">
+                    <i class="fa fa-trash" aria-hidden="true"></i>
+                </button>
+            </div>
+            <hr class=""/>
         </div>
-        <hr class="my-2"/>
         <!-- Dag Diagram -->
         <div id="dag-container">
         </div>
 
         <!--Task Form Modal -->
         <div id="task-form-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-            <div class="bg-white rounded-lg shadow-lg w-9/12 p-6 relative">
+            <div class="bg-white rounded-lg shadow-lg w-2/5 p-6 relative">
                 <h2 id="task-form-title" class="text-2xl font-semibold text-gray-800 mb-4">Add Task</h2>
                 <form>
                     <div class="mb-4">
@@ -79,6 +81,17 @@
                         <button id="submit-task-form" type="button" class="px-4 py-2 mx-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Submit</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!--Task Details Modal -->
+        <div id="task-details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-white rounded-lg shadow-lg w-2/5 p-6 relative">
+                <div class="flex flex-row">
+                    <h2 class="title text-2xl font-semibold text-gray-800 mb-4">Add Task</h2>
+                    <i id="task-details-close" class="fa fa-times cursor-pointer text-xl text-gray-400 ml-auto"></i>
+                </div>
+                <div class="details relative"></div>
             </div>
         </div>
 

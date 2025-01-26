@@ -10,7 +10,6 @@
     text-align: center;
     line-height: 40px;
     font-family: Arial, sans-serif;
-    cursor: pointer;
     padding: 5px 8px;
     border-radius: 8px;
 }
@@ -33,4 +32,17 @@ svg.arrow line {
 }
 svg.arrow polygon {
     fill: #ffc107;
+}
+
+i.spin {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
