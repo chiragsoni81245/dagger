@@ -81,7 +81,7 @@ function renderTable({ dags, total_dags }) {
         tr.innerHTML = `
       <td class="py-3 px-6 text-left">${row.id}</td>
       <td class="py-3 px-6 text-left">${row.name}</td>
-      <td class="py-3 px-6 text-left">${row.status.toUpperCase()}</td>
+      <td class="py-3 px-6 text-left">${capitalize(row.status)}</td>
       <td class="py-3 px-6 text-left">${row.pending_tasks}</td>
       <td class="py-3 px-6 text-left">${row.running_tasks}</td>
       <td class="py-3 px-6 text-left">${row.completed_tasks}</td>

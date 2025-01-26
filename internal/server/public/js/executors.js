@@ -29,14 +29,6 @@ async function submitExecutor() {
     for (let input of EXECUTOR_FORM_MODAL.getElementsByTagName("select")) {
         if (!input.reportValidity()) return;
         let name = input.getAttribute("name");
-        if (name == "config") {
-            try {
-                JSON.parse(input.value);
-            } catch {
-                showToast("Invalid json in config", "error");
-                return;
-            }
-        }
         data[name] = input.value;
     }
 
@@ -105,7 +97,7 @@ function renderTable({ executors, total_executors }) {
         tr.innerHTML = `
       <td class="py-3 px-6 text-left">${row.id}</td>
       <td class="py-3 px-6 text-left">${row.name}</td>
-      <td class="py-3 px-6 text-left">${row.type.toUpperCase()}</td>
+      <td class="py-3 px-6 text-left">${capitalize(row.type)}</td>
       <td class="py-3 px-6 text-left">${new Date(row.created_at).toLocaleString()}</td>
     `;
         tableBody.appendChild(tr);

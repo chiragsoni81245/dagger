@@ -408,13 +408,20 @@ func (apiC *APIControllers) CreateExecutor(c *gin.Context) {
 	var input struct {
 		Name string `json:"name"`
         Type string `json:"type"`
-        Config string `json:"config"`
+        Config string `json:"-"`
 	}
 
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
+
+    if input.Type == "docker" {
+        input.Config = "{}"
+    } else {
+        input.Config = "{}"
+        // To-Do here in feature we can add logic for other fields which can be added into this config to setup those executors
+    }
 
 	id, err := to.CreateExecutor(input.Name, input.Type, input.Config)
 	if err != nil {
