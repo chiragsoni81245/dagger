@@ -3,14 +3,18 @@ package server
 import (
 	"database/sql"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/chiragsoni81245/dagger/internal/models"
 	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/gin-gonic/gin"
+	"gopkg.in/yaml.v3"
 )
 
 
@@ -83,6 +87,112 @@ func (apiC *APIControllers) CreateDag(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"id": id})
+}
+
+func (apiC *APIControllers) CreateDagWithYAML(c *gin.Context) {
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
+    do := models.DagOperations{Logger: logger, DB: db}
+
+    yamlFileHeader, err := c.FormFile("yaml-config")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input, yaml config file missing"})
+		return
+	}
+
+    // Validate File Type
+    fileExt := filepath.Ext(yamlFileHeader.Filename)
+    if fileExt != ".yaml" {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid yaml file"})
+		return
+    }
+    yamlFile, err := yamlFileHeader.Open()
+	if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid yaml file"})
+		return
+	}
+
+    // Read file content
+	var fileContent strings.Builder
+	_, err = io.Copy(&fileContent, yamlFile)
+	if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid yaml file"})
+		return
+	}
+    var dag types.DagNode
+    if err := yaml.Unmarshal([]byte(fileContent.String()), &dag); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid yaml file"})
+		return
+    }
+
+    validationResponse := do.ValidateDagYAML(&dag)
+    if !validationResponse.IsValid {
+        c.JSON(http.StatusBadRequest, gin.H{"error": validationResponse.Error})
+		return
+    }
+
+    fileHeaders := make(map[string]*multipart.FileHeader)
+    for _, fileName := range validationResponse.RequiredFiles {
+        fileHeader, err := c.FormFile(fileName)
+        if err != nil {
+            c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%s file missing", fileName)})
+            return
+        }
+        fileHeaders[fileName] = fileHeader
+    }
+
+    dagId, err := do.CreateDagWithYAML(&dag, fileHeaders)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+    }
+
+    c.JSON(http.StatusCreated, gin.H{"id": dagId})
+}
+
+func (apiC *APIControllers) ValidateDagYAML(c *gin.Context) {
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
+    do := models.DagOperations{Logger: logger, DB: db}
+
+    yamlFileHeader, err := c.FormFile("yaml-config")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input, yaml config file missing"})
+		return
+	}
+    invalidYAMLFile := types.DagYAMLValidationResponse{
+        IsValid: false,
+        RequiredFiles: []string{},
+        Error: "Invalid yaml file",
+    }
+
+    // Validate File Type
+    fileExt := filepath.Ext(yamlFileHeader.Filename)
+    if fileExt != ".yaml" {
+		c.JSON(http.StatusBadRequest, invalidYAMLFile)
+		return
+    }
+    yamlFile, err := yamlFileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, invalidYAMLFile)
+		return
+	}
+
+    // Read file content
+	var fileContent strings.Builder
+	_, err = io.Copy(&fileContent, yamlFile)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, invalidYAMLFile)
+		return
+	}
+    var dag types.DagNode
+    if err := yaml.Unmarshal([]byte(fileContent.String()), &dag); err != nil {
+		c.JSON(http.StatusBadRequest, invalidYAMLFile)
+		return
+    }
+
+    response := do.ValidateDagYAML(&dag)
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (apiC *APIControllers) DeleteDag(c *gin.Context) {

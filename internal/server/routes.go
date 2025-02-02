@@ -27,6 +27,8 @@ func SetupRoutes(server *types.Server) {
 		// DAG routes
 		v1.GET("/dags", api.GetDags)
 		v1.POST("/dags", api.CreateDag)
+		v1.POST("/dags/yaml", api.CreateDag)
+		v1.POST("/dags/yaml/validate", api.ValidateDagYAML)
 		v1.GET("/dags/:id", api.GetDagByID)
 		v1.GET("/dags/:id/tasks", api.GetTasksByDagID)
 		v1.DELETE("/dags/:id", api.DeleteDag)

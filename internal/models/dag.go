@@ -2,9 +2,16 @@ package models
 
 import (
 	"database/sql"
+	"encoding/json"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 
-	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/chiragsoni81245/dagger/internal/controller"
+	"github.com/chiragsoni81245/dagger/internal/queue"
+	"github.com/chiragsoni81245/dagger/internal/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -59,7 +66,7 @@ func (do *DagOperations) GetDags(page int, perPage int) ([]types.Dag, int, error
 	for rows.Next() {
 		var dag types.Dag
 		if err := rows.Scan(&dag.ID, &dag.Name, &dag.Status, &dag.CreatedAt, &dag.PendingTasks, &dag.RunningTasks, &dag.CompletedTasks); err != nil {
-			do.Logger.Println("Error scanning dag:", err)
+			do.Logger.Println("Error scanning dag: ", err)
 			return nil, 0, err
 		}
 		dags = append(dags, dag)
@@ -76,7 +83,7 @@ func (do *DagOperations) GetDagByID(id int) (*types.DagWithTasks, error) {
 
 	var dag types.DagWithTasks
     if err := row.Scan(&dag.ID, &dag.Name, &dag.Status, &dag.CreatedAt); err != nil {
-        do.Logger.Println("Error scanning dag:", err)
+        do.Logger.Println("Error scanning dag: ", err)
         return nil, err
     }
     to := TaskOperations{Logger: do.Logger, DB: do.DB}
@@ -95,7 +102,7 @@ func (do *DagOperations) CreateDag(name string) (int, error) {
 		VALUES ($1) 
 		RETURNING id`, name).Scan(&id)
 	if err != nil {
-		do.Logger.Error("Error creating dag:", err)
+		do.Logger.Error("Error creating dag: ", err)
 		return 0, err
 	}
 
@@ -106,7 +113,7 @@ func (do *DagOperations) DeleteDag(id int) error {
 	result, err := do.DB.Exec(`DELETE FROM dag WHERE id = $1 and status = 'created'`, id)
     rows_affected, err := result.RowsAffected()
 	if err != nil {
-		do.Logger.Error("Error deleting dag:", err)
+		do.Logger.Error("Error deleting dag: ", err)
 		return err
 	}
     if rows_affected == 0 {
@@ -135,5 +142,230 @@ func (do *DagOperations) RunDag(id int) error {
         return err
     }
     return nil
+}
+
+func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]*multipart.FileHeader) (int, error) {
+    // Parse YAML file content
+    var err error
+    txn, err := do.DB.Begin()
+    if err != nil {
+        return -1, err
+    }
+
+    defer func () {
+        if err != nil {
+            do.Logger.Error(err)
+            err = txn.Rollback()
+            if err != nil {
+                do.Logger.Error(err)
+            }
+        }
+    }()
+
+    // Creating Dag
+	var dagId int
+    err = txn.QueryRow(`
+    INSERT INTO dag (name) 
+    VALUES ($1) 
+    RETURNING id`, dag.Name).Scan(&dagId)
+    if err != nil {
+        do.Logger.Error("Error creating dag: ", err)
+        return -1, err
+    }
+
+    if len(dag.Tasks) == 0 {
+        err = txn.Commit()
+        if err != nil {
+            return -1, err
+        }
+        return dagId, nil
+    }
+
+    // Creating Tasks
+    type qElement struct {
+        Node types.TaskNode
+        ParentId int
+    }
+
+    q := &queue.Queue[qElement]{}
+    q.Enqueue(qElement{Node: dag.Tasks[0], ParentId: -1})
+
+    for !q.IsEmpty() {
+        ele, _ := q.Dequeue()
+        task := ele.Node
+        parentId := ele.ParentId
+        var taskId int
+
+        taskDefinitionJson, err := json.Marshal(task.Definition)
+        if err != nil {
+            err = fmt.Errorf("Error in task definition json parsing: %v", err)
+            return -1, err
+        }
+
+        // Validate File Type
+        fileExt := filepath.Ext(task.CodeZipFileName)
+        if fileExt != ".zip" {
+            err = fmt.Errorf("Invalid file extension %s for task %s", fileExt, task.Name)
+            return -1, err
+        }
+
+        // Insert Task into DB
+        err = txn.QueryRow(`
+        INSERT INTO task (dag_id, name, type, executor_id, definition, parent_id) 
+        VALUES ($1) 
+        RETURNING id`, dagId, task.Name, task.Type, task.ExecutorId, taskDefinitionJson, parentId).Scan(&taskId)
+        if err != nil {
+            err = fmt.Errorf("Error creating task: %v", err)
+            return -1, err
+        }
+
+        // Store Code Zip file in that task's specific directory
+        taskDir := fmt.Sprintf("storage/code-files-zip/%d", taskId)
+        err = os.MkdirAll(taskDir, 0755)
+        if err != nil {
+            err = fmt.Errorf("Error in creating code file directory for task: %v", err)
+            return -1, err
+        }
+
+        codeZipFile, err := files[task.CodeZipFileName].Open()
+        if err != nil {
+            return -1, err
+        }
+
+        // Read file content
+        zipFile, err := os.Open(taskDir+"/code.zip")
+        if err != nil {
+            err = fmt.Errorf("Error creating new zip file for task %s: %v", task.Name, err)
+            return -1, err
+        }
+        _, err = io.Copy(zipFile, codeZipFile)
+        if err != nil {
+            err = fmt.Errorf("Error saving task code zip file: %v", err)
+            return -1, err
+        }
+
+        for _, child := range task.Childs {
+            q.Enqueue(qElement{Node: child, ParentId: taskId})
+        }
+    }
+
+    err = txn.Commit()
+    if err != nil {
+        return -1, err
+    }
+
+    return dagId, nil
+}
+
+func (do *DagOperations) ValidateDagYAML(dag *types.DagNode) types.DagYAMLValidationResponse {
+    // Parse YAML file content
+    var err error
+    internalServerError := types.DagYAMLValidationResponse{
+        IsValid: false,
+        Error: "Something went wrong",
+        RequiredFiles: []string{},
+    }
+
+    if len(dag.Name) == 0 {
+        return types.DagYAMLValidationResponse{
+            IsValid: false,
+            Error: "Invalid dag name",
+            RequiredFiles: []string{},
+        }
+
+    }
+
+    executorIds := make(map[int]struct{})
+    executorRows, err := do.DB.Query(`
+        SELECT id FROM executor;
+    `) 
+    for executorRows.Next() {
+        var executorId int
+        err := executorRows.Scan(&executorId)
+        if err != nil {
+            do.Logger.Errorf("Error fetching executor ids from db: %v", err)
+            return internalServerError
+        }
+        executorIds[executorId] = struct{}{}
+    }
+
+    var existingDagId int
+    err = do.DB.QueryRow(`
+        SELECT id FROM dag WHERE name=$1
+    `, dag.Name).Scan(&existingDagId)
+    if err == nil {
+        return types.DagYAMLValidationResponse{
+            IsValid: false,
+            Error: fmt.Sprintf("Dag with name %s already exists", dag.Name),
+            RequiredFiles: []string{},
+        }
+    } else if err == sql.ErrNoRows {
+        err = nil
+    } else {
+        return internalServerError
+    }
+
+    requiredFiles := make(map[string]struct{})
+    if len(dag.Tasks) == 0 {
+        keys := make([]string, 0, len(requiredFiles))
+        for k := range requiredFiles {
+            keys = append(keys, k)
+        }
+        
+        return types.DagYAMLValidationResponse{
+            IsValid: true,
+            RequiredFiles: keys,
+            Error: "",
+        }
+    }
+
+    // Creating Tasks
+    type qElement struct {
+        Node types.TaskNode
+        ParentId int
+    }
+
+    q := &queue.Queue[qElement]{}
+    q.Enqueue(qElement{Node: dag.Tasks[0]})
+
+    for !q.IsEmpty() {
+        ele, _ := q.Dequeue()
+        task := ele.Node
+        requiredFiles[task.CodeZipFileName] = struct{}{}
+        if task.Type == "docker" {
+            _, ok := task.Definition["dockerfile"];
+            if !ok {
+                err = fmt.Errorf("Missing dockerfile in task %s definition", task.Name) 
+                break
+            }
+            if _, ok := executorIds[task.ExecutorId]; !ok {
+                err = fmt.Errorf("Invalid executor id %d in task %s", task.ExecutorId, task.Name) 
+                break
+            }
+        }
+
+        for _, child := range task.Childs {
+            q.Enqueue(qElement{Node: child})
+        }
+    }
+
+    if err != nil {
+        return types.DagYAMLValidationResponse{
+            IsValid: false,
+            RequiredFiles: []string{},
+            Error: err.Error(),
+        }
+    }
+
+    keys := make([]string, 0, len(requiredFiles))
+    for k := range requiredFiles {
+        keys = append(keys, k)
+    }
+
+    return types.DagYAMLValidationResponse{
+        IsValid: true,
+        RequiredFiles: keys,
+        Error: "",
+    }
 }
 

@@ -5,3 +5,35 @@ body {
 body > nav {
     background-color: #5b4dff;
 }
+
+.separator {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 8px 0;
+}
+.separator::before,
+.separator::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid #ccc;
+}
+.separator:not(:empty)::before {
+    margin-right: 10px;
+}
+.separator:not(:empty)::after {
+    margin-left: 10px;
+}
+
+i.spin {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

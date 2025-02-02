@@ -55,19 +55,34 @@
         </div>
 
         <!--Form Modal -->
-        <div id="dag-form-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div id="dag-form-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
             <div class="bg-white rounded-lg shadow-lg w-2/5 p-6 relative">
                 <h2 id="dag-form-title" class="text-2xl font-semibold text-gray-800 mb-4">Add Dag</h2>
-                <form>
-                    <div class="mb-4">
+                <form id="dag-manual-form" class="mb-4">
+                    <div>
                         <label for="name" class="block text-sm font-medium text-gray-700">Name*</label>
                         <input id="dag-name" type="text" name="name" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
-                    <div class="flex justify-end">
-                        <button id="cancel-dag-form" type="button" class="px-4 py-2 border border-gray-400 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">Cancel</button>
-                        <button id="submit-dag-form" type="button" class="px-4 py-2 mx-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Submit</button>
+                </form>
+                <div class="separator">or</div>
+                <form id="dag-via-yaml-form" class="mb-4">
+                    <div>
+                        <label for="yaml-config" class="block text-sm font-medium text-gray-700">YAML Config*</label>
+                        <div class="relative">
+                            <input id="yaml-config" type="file" name="yaml-config" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
+                            <i class="fa fa-spinner spin absolute right-4 top-[40%] text-blue-400 hidden" aria-hidden="true"></i>
+                        </div>
+                        <p class="my-1">
+                            <i class="fa fa-info-circle ml-1" aria-hidden="true"></i>
+                            <a href="/static/sample-dag-definition.yaml" target="_blank" class="text-sm underline text-blue-600">Download Sample DAG Definition</a>
+                        </p>
                     </div>
                 </form>
+                <div class="flex justify-end">
+                    <button id="back-dag-form" type="button" class="px-4 py-2 border border-gray-400 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors hidden">Back</button>
+                    <button id="cancel-dag-form" type="button" class="px-4 py-2 border border-gray-400 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">Cancel</button>
+                    <button id="submit-dag-form" type="button" class="px-4 py-2 mx-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Submit</button>
+                </div>
             </div>
         </div>
 
