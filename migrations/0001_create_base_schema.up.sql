@@ -1,7 +1,7 @@
 -- Create dag table
 CREATE TABLE dag (
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL DEFAULT 'created',
     created_at TIMESTAMP DEFAULT NOW()
 );
@@ -9,7 +9,7 @@ CREATE TABLE dag (
 -- Create executor table
 CREATE TABLE executor (
     id SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
     type TEXT NOT NULL,
     config JSONB DEFAULT '{}'::JSONB,
     created_at TIMESTAMP DEFAULT NOW()
