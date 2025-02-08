@@ -245,6 +245,18 @@ async function renderDag(dag) {
 
     // Clear DAG Container
     DAG_CONTAINER.innerHTML = "";
+    if (dag.status == "created") {
+        if (dag.tasks != null) {
+            document.getElementById("run-dag").classList.remove("hidden");
+        }
+        document.getElementById("delete-dag").classList.remove("hidden");
+    } else if (dag.status == "running") {
+        document.getElementById("run-dag").classList.add("hidden");
+        document.getElementById("delete-dag").classList.add("hidden");
+    } else if (dag.status == "completed") {
+        document.getElementById("run-dag").classList.add("hidden");
+        document.getElementById("delete-dag").classList.remove("hidden");
+    }
 
     if (dag.tasks == null) {
         let addTaskNode = getTemplateToElement(`
@@ -256,16 +268,6 @@ async function renderDag(dag) {
         addTaskNode.addEventListener("click", renderTaskForm);
         DAG_CONTAINER.appendChild(addTaskNode);
         return;
-    }
-    if (["created"].indexOf(dag.status) != -1) {
-        document.getElementById("run-dag").classList.remove("hidden");
-        document.getElementById("delete-dag").classList.remove("hidden");
-    } else if (["running"].indexOf(dag.status) != -1) {
-        document.getElementById("run-dag").classList.add("hidden");
-        document.getElementById("delete-dag").classList.add("hidden");
-    } else if (["completed"].indexOf(dag.status) != -1) {
-        document.getElementById("run-dag").classList.add("hidden");
-        document.getElementById("delete-dag").classList.remove("hidden");
     }
 
     let tasks = {};

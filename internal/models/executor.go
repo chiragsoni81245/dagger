@@ -20,6 +20,10 @@ func (eo *ExecutorOperations) GetExecutors(page int, perPage int) ([]types.Execu
     `)
     total_query_row.Scan(&total_executors)
 
+    if page == 1 || perPage == -1 {
+        perPage = total_executors
+    }
+
 	rows, err := eo.DB.Query(`
 		SELECT id, type, name, config, created_at
 		FROM executor

@@ -1,20 +1,27 @@
-name: testing
+name: Example DAG
 tasks:
-- name: t1
-  executorId: 2
+- name: Task 1
+  executor: local-docker
   type: docker
   definition:
     dockerfile: Dockerfile
   code: task-1.zip
   childs:
-    - name: t2
-      executorId: 2
+    - name: Task 2.1
+      executor: local-docker
       type: docker
       definition:
         dockerfile: Dockerfile
       code: task-1.zip
-    - name: t3
-      executorId: 2
+      childs:
+        - name: Task 3
+          executor: local-docker
+          type: docker
+          definition:
+            dockerfile: Dockerfile
+          code: task-1.zip
+    - name: Task 2.2
+      executor: local-docker
       type: docker
       definition:
         dockerfile: Dockerfile

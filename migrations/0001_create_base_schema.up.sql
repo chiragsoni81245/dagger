@@ -37,3 +37,6 @@ CREATE INDEX idx_task_status ON task (status);
 -- Add index to the type column of the task table
 CREATE INDEX idx_task_type ON task (type);
 
+-- Add default docker executor with name `local-docker`
+INSERT INTO executor(name, type) VALUES('local-docker', 'docker');
+

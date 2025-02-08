@@ -21,7 +21,7 @@ type TaskDefinition map[string]string
 
 type TaskNode struct {
 	Name            string         `yaml:"name"`
-	ExecutorId      int            `yaml:"executorId"`
+	ExecutorName    string         `yaml:"executor"`
 	Type            string         `yaml:"type"`
 	CodeZipFileName string         `yaml:"code"`
 	Definition      TaskDefinition `yaml:"definition"`

@@ -26,7 +26,7 @@
         <div class="container mx-auto mt-10">
             <div id="no-result-found" class="flex flex-col justify-center items-center hidden">
                 <h2 class="text-center mb-3">No DAG available</h2>
-                <button class="add-dag bg-blue-500 text-white font-semibold m-2 py-2 ml-auto rounded hover:bg-blue-600 w-[15%]">Add Dag</button>
+                <button class="add-dag bg-blue-500 text-white font-semibold m-2 py-2 mx-auto rounded hover:bg-blue-600 w-[15%]">Add Dag</button>
             </div>
             <div id="result-found" class="flex flex-col rounded my-6 hidden">
                 <button class="add-dag bg-blue-500 text-white font-semibold m-2 py-2 ml-auto rounded hover:bg-blue-600 w-[15%]">Add Dag</button>
@@ -55,13 +55,13 @@
         </div>
 
         <!--Form Modal -->
-        <div id="dag-form-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div id="dag-form-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
             <div class="bg-white rounded-lg shadow-lg w-2/5 p-6 relative">
                 <h2 id="dag-form-title" class="text-2xl font-semibold text-gray-800 mb-4">Add Dag</h2>
                 <form id="dag-manual-form" class="mb-4">
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700">Name*</label>
-                        <input id="dag-name" type="text" name="name" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <input id="dag-name" type="text" name="name" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     </div>
                 </form>
                 <div class="separator">or</div>
@@ -69,8 +69,10 @@
                     <div>
                         <label for="yaml-config" class="block text-sm font-medium text-gray-700">YAML Config*</label>
                         <div class="relative">
-                            <input id="yaml-config" type="file" name="yaml-config" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
+                            <input id="yaml-config" type="file" name="yaml-config" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
                             <i class="fa fa-spinner spin absolute right-4 top-[40%] text-blue-400 hidden" aria-hidden="true"></i>
+                            <div class="input-fields-block-for-yaml my-2">
+                            </div>
                         </div>
                         <p class="my-1">
                             <i class="fa fa-info-circle ml-1" aria-hidden="true"></i>

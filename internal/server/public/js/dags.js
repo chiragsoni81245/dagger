@@ -14,23 +14,41 @@ async function main() {
 
 async function submitDag() {
     const DAG_FORM_MODAL = document.getElementById("dag-form-modal");
+    const formData = new FormData();
     let data = {};
 
     for (let input of DAG_FORM_MODAL.getElementsByTagName("input")) {
-        if (!input.reportValidity()) return;
         let name = input.getAttribute("name");
-        data[name] = input.value;
+        if (input.type == "file") {
+            if (input.files.length == 0) continue;
+            formData.append(name, input.files[0]);
+        } else {
+            formData.append(name, input.value);
+            data[name] = input.value;
+        }
     }
 
-    let response = await fetch(`${BASE_API_URL}/dags`, {
-        method: "POST",
-        headers: { ContentType: "application/json" },
-        body: JSON.stringify(data),
-    });
-    if (response.status != 201) {
-        const { error } = await response.json();
-        showToast(error, "error");
-        return;
+    if (formData.get("yaml-config")) {
+        let response = await fetch(`${BASE_API_URL}/dags/yaml`, {
+            method: "POST",
+            body: formData,
+        });
+        if (response.status != 201) {
+            const { error } = await response.json();
+            showToast(error, "error");
+            return;
+        }
+    } else {
+        let response = await fetch(`${BASE_API_URL}/dags`, {
+            method: "POST",
+            headers: { ContentType: "application/json" },
+            body: JSON.stringify(data),
+        });
+        if (response.status != 201) {
+            const { error } = await response.json();
+            showToast(error, "error");
+            return;
+        }
     }
     showToast("DAG created successfully");
     closeDagForm();
@@ -52,8 +70,95 @@ async function renderAddDagForm() {
 }
 
 function closeDagForm() {
-    const DAG_FORM_MODAL = document.getElementById("dag-form-modal");
-    DAG_FORM_MODAL.classList.add("hidden");
+    if (this.id != "back-dag-form") {
+        const DAG_FORM_MODAL = document.getElementById("dag-form-modal");
+        DAG_FORM_MODAL.classList.add("hidden");
+    }
+    const yamlConfig = document.getElementById("yaml-config");
+    yamlConfig.value = "";
+    const inputFieldsBlock = yamlConfig.parentElement.querySelector(
+        ".input-fields-block-for-yaml"
+    );
+    inputFieldsBlock.innerHTML = "";
+    document.getElementById("back-dag-form").classList.add("hidden");
+    document.getElementById("cancel-dag-form").classList.remove("hidden");
+    document.getElementById("dag-manual-form").classList.remove("hidden");
+    document
+        .querySelector("#dag-form-modal div.separator")
+        .classList.remove("hidden");
+
+    // Enable Submit button
+    document
+        .getElementById("submit-dag-form")
+        .classList.remove("bg-gray-400", "cursor-not-allowed");
+    document
+        .getElementById("submit-dag-form")
+        .classList.add("bg-blue-600", "hover:bg-blue-700");
+    document.getElementById("submit-dag-form").disabled = false;
+    // Remove Loader
+    yamlConfig.parentElement.querySelector(".spin").classList.add("hidden");
+    yamlConfig.classList.remove("border-red-600");
+}
+
+async function onYamlConfigChange() {
+    document.getElementById("dag-manual-form").classList.add("hidden");
+    document
+        .querySelector("#dag-form-modal div.separator")
+        .classList.add("hidden");
+    document.getElementById("cancel-dag-form").classList.add("hidden");
+    document.getElementById("back-dag-form").classList.remove("hidden");
+
+    // Disable Submit button
+    document
+        .getElementById("submit-dag-form")
+        .classList.add("bg-gray-400", "cursor-not-allowed");
+    document
+        .getElementById("submit-dag-form")
+        .classList.remove("bg-blue-600", "hover:bg-blue-700");
+    document.getElementById("submit-dag-form").disabled = true;
+    // Add Loader
+    this.parentElement.querySelector(".spin").classList.remove("hidden");
+
+    // Do validation request to server for this YAML, and to get what inputs to take from user for this DAG definition
+    const formData = new FormData();
+    formData.append("yaml-config", this.files[0]);
+
+    let response = await fetch(`${BASE_API_URL}/dags/yaml/validate`, {
+        method: "POST",
+        body: formData,
+    });
+    const { isValid, error, requiredFiles } = await response.json();
+    if (response.status != 200 || !isValid) {
+        this.classList.add("border-red-600");
+        showToast(error, "error");
+    } else {
+        // Logic to add file fields
+        const inputFieldsBlock = this.parentElement.querySelector(
+            ".input-fields-block-for-yaml"
+        );
+        inputFieldsBlock.innerHTML = "";
+        for (let requiredFile of requiredFiles) {
+            const inputField = getTemplateToElement(`
+                    <div class="input-block mt-1">
+                        <label for="${requiredFile}" class="block text-sm font-medium text-gray-700">${requiredFile}*</label>
+                        <input type="file" name="${requiredFile}" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    </div>
+                `);
+            inputFieldsBlock.appendChild(inputField);
+        }
+
+        this.classList.remove("border-red-600");
+        // Enable Submit button
+        document
+            .getElementById("submit-dag-form")
+            .classList.remove("bg-gray-400", "cursor-not-allowed");
+        document
+            .getElementById("submit-dag-form")
+            .classList.add("bg-blue-600", "hover:bg-blue-700");
+        document.getElementById("submit-dag-form").disabled = false;
+    }
+    // Remove Loader
+    this.parentElement.querySelector(".spin").classList.add("hidden");
 }
 
 function renderTable({ dags, total_dags }) {
@@ -138,76 +243,10 @@ document.getElementById("submit-dag-form").addEventListener("click", submitDag);
 
 document
     .getElementById("yaml-config")
-    .addEventListener("change", async function () {
-        document.getElementById("dag-manual-form").classList.add("hidden");
-        document
-            .querySelector("#dag-form-modal div.separator")
-            .classList.add("hidden");
-        document.getElementById("cancel-dag-form").classList.add("hidden");
-        document.getElementById("back-dag-form").classList.remove("hidden");
+    .addEventListener("change", onYamlConfigChange);
 
-        // Disable Submit button
-        document
-            .getElementById("submit-dag-form")
-            .classList.add("bg-gray-400", "cursor-not-allowed");
-        document
-            .getElementById("submit-dag-form")
-            .classList.remove("bg-blue-600", "hover:bg-blue-700");
-        document.getElementById("submit-dag-form").disabled = true;
-        // Add Loader
-        this.parentElement.querySelector(".spin").classList.remove("hidden");
-
-        // Do validation request to server for this YAML, and to get what inputs to take from user for this DAG definition
-        const formData = new FormData();
-        formData.append("yaml-config", this.files[0]);
-
-        let response = await fetch(`${BASE_API_URL}/dags/yaml/validate`, {
-            method: "POST",
-            body: formData,
-        });
-        const { isValid, error, requiredFiles } = await response.json();
-        if (response.status != 200 || !isValid) {
-            this.classList.add("border-red-600");
-            showToast(error, "error");
-        } else {
-            console.log({ isValid, requiredFiles });
-            showToast("Vaild yaml");
-
-            this.classList.remove("border-red-600");
-            // Enable Submit button
-            document
-                .getElementById("submit-dag-form")
-                .classList.remove("bg-gray-400", "cursor-not-allowed");
-            document
-                .getElementById("submit-dag-form")
-                .classList.add("bg-blue-600", "hover:bg-blue-700");
-            document.getElementById("submit-dag-form").disabled = false;
-        }
-        // Remove Loader
-        this.parentElement.querySelector(".spin").classList.add("hidden");
-    });
-
-document.getElementById("back-dag-form").addEventListener("click", function () {
-    const yamlConfig = document.getElementById("yaml-config");
-    yamlConfig.value = "";
-    document.getElementById("back-dag-form").classList.add("hidden");
-    document.getElementById("cancel-dag-form").classList.remove("hidden");
-    document.getElementById("dag-manual-form").classList.remove("hidden");
-    document
-        .querySelector("#dag-form-modal div.separator")
-        .classList.remove("hidden");
-
-    // Enable Submit button
-    document
-        .getElementById("submit-dag-form")
-        .classList.remove("bg-gray-400", "cursor-not-allowed");
-    document
-        .getElementById("submit-dag-form")
-        .classList.add("bg-blue-600", "hover:bg-blue-700");
-    document.getElementById("submit-dag-form").disabled = false;
-    // Remove Loader
-    yamlConfig.parentElement.querySelector(".spin").classList.add("hidden");
-    yamlConfig.classList.remove("border-red-600");
-});
+document
+    .getElementById("back-dag-form")
+    .addEventListener("click", closeDagForm);
 
 main();

@@ -144,6 +144,7 @@ func (apiC *APIControllers) CreateDagWithYAML(c *gin.Context) {
     dagId, err := do.CreateDagWithYAML(&dag, fileHeaders)
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+        return
     }
 
     c.JSON(http.StatusCreated, gin.H{"id": dagId})

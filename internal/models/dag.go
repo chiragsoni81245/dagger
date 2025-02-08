@@ -110,7 +110,7 @@ func (do *DagOperations) CreateDag(name string) (int, error) {
 }
 
 func (do *DagOperations) DeleteDag(id int) error {
-	result, err := do.DB.Exec(`DELETE FROM dag WHERE id = $1 and status = 'created'`, id)
+	result, err := do.DB.Exec(`DELETE FROM dag WHERE id = $1 and status in ('created','completed')`, id)
     rows_affected, err := result.RowsAffected()
 	if err != nil {
 		do.Logger.Error("Error deleting dag: ", err)
@@ -144,9 +144,8 @@ func (do *DagOperations) RunDag(id int) error {
     return nil
 }
 
-func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]*multipart.FileHeader) (int, error) {
+func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]*multipart.FileHeader) (dagId int, err error) {
     // Parse YAML file content
-    var err error
     txn, err := do.DB.Begin()
     if err != nil {
         return -1, err
@@ -155,21 +154,32 @@ func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]
     defer func () {
         if err != nil {
             do.Logger.Error(err)
-            err = txn.Rollback()
-            if err != nil {
-                do.Logger.Error(err)
+            secondaryErr := txn.Rollback()
+            if secondaryErr != nil {
+                do.Logger.Error(secondaryErr)
+                err = secondaryErr
             }
         }
     }()
 
+    eo := ExecutorOperations{Logger: do.Logger, DB: do.DB}
+    executors, _, err := eo.GetExecutors(1, -1) // We want to fetch all executors so here page =1, and perPage = -1 which is considered infinity
+    if err != nil {
+        do.Logger.Errorf("Error fetching executor details from db: %v", err)
+        return -1, err
+    }
+    executorIds := make(map[string]int)
+    for _, executor := range executors {
+        executorIds[executor.Name] = executor.ID
+    }
+
     // Creating Dag
-	var dagId int
     err = txn.QueryRow(`
     INSERT INTO dag (name) 
     VALUES ($1) 
     RETURNING id`, dag.Name).Scan(&dagId)
     if err != nil {
-        do.Logger.Error("Error creating dag: ", err)
+        err = fmt.Errorf("Error creating dag: %v", err)
         return -1, err
     }
 
@@ -184,11 +194,11 @@ func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]
     // Creating Tasks
     type qElement struct {
         Node types.TaskNode
-        ParentId int
+        ParentId *int
     }
 
     q := &queue.Queue[qElement]{}
-    q.Enqueue(qElement{Node: dag.Tasks[0], ParentId: -1})
+    q.Enqueue(qElement{Node: dag.Tasks[0], ParentId: nil})
 
     for !q.IsEmpty() {
         ele, _ := q.Dequeue()
@@ -212,8 +222,8 @@ func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]
         // Insert Task into DB
         err = txn.QueryRow(`
         INSERT INTO task (dag_id, name, type, executor_id, definition, parent_id) 
-        VALUES ($1) 
-        RETURNING id`, dagId, task.Name, task.Type, task.ExecutorId, taskDefinitionJson, parentId).Scan(&taskId)
+        VALUES ($1, $2, $3, $4, $5, $6) 
+        RETURNING id`, dagId, task.Name, task.Type, executorIds[task.ExecutorName], taskDefinitionJson, parentId).Scan(&taskId)
         if err != nil {
             err = fmt.Errorf("Error creating task: %v", err)
             return -1, err
@@ -233,7 +243,7 @@ func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]
         }
 
         // Read file content
-        zipFile, err := os.Open(taskDir+"/code.zip")
+	    zipFile, err := os.OpenFile(taskDir+"/code.zip", os.O_RDWR|os.O_CREATE, 0644)
         if err != nil {
             err = fmt.Errorf("Error creating new zip file for task %s: %v", task.Name, err)
             return -1, err
@@ -245,7 +255,7 @@ func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]
         }
 
         for _, child := range task.Childs {
-            q.Enqueue(qElement{Node: child, ParentId: taskId})
+            q.Enqueue(qElement{Node: child, ParentId: &taskId})
         }
     }
 
@@ -275,18 +285,15 @@ func (do *DagOperations) ValidateDagYAML(dag *types.DagNode) types.DagYAMLValida
 
     }
 
-    executorIds := make(map[int]struct{})
-    executorRows, err := do.DB.Query(`
-        SELECT id FROM executor;
-    `) 
-    for executorRows.Next() {
-        var executorId int
-        err := executorRows.Scan(&executorId)
-        if err != nil {
-            do.Logger.Errorf("Error fetching executor ids from db: %v", err)
-            return internalServerError
-        }
-        executorIds[executorId] = struct{}{}
+    eo := ExecutorOperations{Logger: do.Logger, DB: do.DB}
+    executors, _, err := eo.GetExecutors(1, -1) // We want to fetch all executors so here page =1, and perPage = -1 which is considered infinity
+    if err != nil {
+        do.Logger.Errorf("Error fetching executor details from db: %v", err)
+        return internalServerError
+    }
+    executorIds := make(map[string]int)
+    for _, executor := range executors {
+        executorIds[executor.Name] = executor.ID
     }
 
     var existingDagId int
@@ -338,8 +345,8 @@ func (do *DagOperations) ValidateDagYAML(dag *types.DagNode) types.DagYAMLValida
                 err = fmt.Errorf("Missing dockerfile in task %s definition", task.Name) 
                 break
             }
-            if _, ok := executorIds[task.ExecutorId]; !ok {
-                err = fmt.Errorf("Invalid executor id %d in task %s", task.ExecutorId, task.Name) 
+            if _, ok := executorIds[task.ExecutorName]; !ok {
+                err = fmt.Errorf("Invalid executor name %s in task %s", task.ExecutorName, task.Name) 
                 break
             }
         }
