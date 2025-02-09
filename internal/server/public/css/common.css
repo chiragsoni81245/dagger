@@ -37,3 +37,38 @@ i.spin {
         transform: rotate(360deg);
     }
 }
+
+/* ------------------------- Scroll Bar --------------------------------------- */
+/* Apply to div and pre */
+div::-webkit-scrollbar,
+pre::-webkit-scrollbar {
+    width: 20px; /* Width of vertical scrollbar */
+    height: 20px; /* Height of horizontal scrollbar */
+}
+
+/* Track */
+div::-webkit-scrollbar-track,
+pre::-webkit-scrollbar-track {
+    background: #f1f1f1; /* Light gray background */
+    border-radius: 10px;
+}
+
+/* Handle */
+div::-webkit-scrollbar-thumb,
+pre::-webkit-scrollbar-thumb {
+    background: #888; /* Darker gray handle */
+    border-radius: 10px;
+}
+
+/* Handle on hover */
+div::-webkit-scrollbar-thumb:hover,
+pre::-webkit-scrollbar-thumb:hover {
+    background: #555; /* Slightly darker on hover */
+}
+
+/* Firefox support */
+div,
+pre {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+}

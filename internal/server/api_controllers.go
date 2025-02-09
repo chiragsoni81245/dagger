@@ -520,7 +520,9 @@ func (apiC *APIControllers) CreateTask(c *gin.Context) {
     var definition string = "{}";
     if input.DockerfilePath != "" {
         definition = fmt.Sprintf("{\"dockerfile\": \"%s\"}", input.DockerfilePath)
-    } 
+    } else {
+        definition = "{\"dockerfile\": \"Dockerfile\"}"
+    }
 
 	id, txn, err := to.CreateTask(input.DagId, input.ExecutorID, input.Name, input.Type, definition, input.ParentID)
 	if err != nil {

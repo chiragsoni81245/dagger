@@ -341,11 +341,7 @@ func (do *DagOperations) ValidateDagYAML(dag *types.DagNode) types.DagYAMLValida
         task := ele.Node
         requiredFiles[task.CodeZipFileName] = struct{}{}
         if task.Type == "docker" {
-            _, ok := task.Definition["dockerfile"];
-            if !ok {
-                err = fmt.Errorf("Missing dockerfile in task %s definition", task.Name) 
-                break
-            }
+            // Here we can check other definitions as well for this task
             if _, ok := executorIds[task.ExecutorName]; !ok {
                 err = fmt.Errorf("Invalid executor name %s in task %s", task.ExecutorName, task.Name) 
                 break

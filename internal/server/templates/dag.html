@@ -73,8 +73,8 @@
                         <div class="dynamic-fields">
                             <div class="type-docker hidden">
                                 <div class="mb-4">
-                                    <label for="command" class="block text-sm font-medium text-gray-700">Dockerfile Path</label>
-                                    <input id="dockerfile-path" name="dockerfile-path" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
+                                    <label for="dockerfile-path" class="block text-sm font-medium text-gray-700">Dockerfile Path</label>
+                                    <input id="dockerfile-path" name="dockerfile-path" value="Dockerfile" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
                                 </div>
                             </div>
                         </div>
@@ -89,8 +89,8 @@
 
         <!--Task Details Modal -->
         <div id="task-details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-            <div class="bg-white rounded-lg shadow-lg w-2/5 p-6 relative">
-                <div class="header flex flex-row">
+            <div class="bg-white rounded-lg shadow-lg w-2/3 relative">
+                <div class="header flex flex-row px-6 pt-6">
                     <h2 class="title text-2xl font-semibold text-gray-800 mb-4">Task Logs</h2>
                     <div class="menu-actions ml-auto">
                         <i id="task-details-close" class="fa fa-times cursor-pointer text-xl text-gray-400 mx-2"></i>

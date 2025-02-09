@@ -93,7 +93,11 @@ async function renderTaskForm(e) {
     if (action == "Add") {
         // Reset All Field Values
         for (let input of TASK_FORM_MODAL.getElementsByTagName("input")) {
-            input.value = "";
+            if (input.id == "dockerfile-path") {
+                input.value = "Dockerfile";
+            } else {
+                input.value = "";
+            }
         }
         for (let input of TASK_FORM_MODAL.getElementsByTagName("textarea")) {
             input.value = "";
@@ -141,7 +145,7 @@ async function showTaskDetails(e) {
     MENU_BLOCK.querySelector(".expand")?.remove();
     MENU_BLOCK.insertBefore(
         getTemplateToElement(
-            `<i class="expand fa fa-arrows-alt cursor-pointer text-gray-400 mx-2 rounded" aria-hidden="true"></i>`
+            `<i class="expand fa fa-window-maximize cursor-pointer text-gray-400 mx-2 rounded" aria-hidden="true"></i>`
         ),
         document.getElementById("task-details-close")
     );
@@ -169,7 +173,7 @@ async function showTaskDetails(e) {
         detailsBlock.appendChild(
             getTemplateToElement(`
                 <div id="task-log-${logs[i].name}" class="tab-content ${i == 0 ? "" : "hidden"}">
-                    <pre class="bg-gray-100 p-4 overflow-auto h-[100%]">${await getFileContent(logs[i].url)}</pre>
+                    <pre class="bg-gray-100 p-4 overflow-auto rounded h-[400px]">${await getFileContent(logs[i].url)}</pre>
                 </div>
             `)
         );
@@ -179,22 +183,24 @@ async function showTaskDetails(e) {
     const tabContents = document.querySelectorAll(".tab-content");
 
     MENU_BLOCK.querySelector(".expand").addEventListener("click", function () {
-        if (this.classList.contains("fa-arrows-alt")) {
-            this.classList.remove("fa-arrows-alt");
-            this.classList.add("fa-compress");
+        if (this.classList.contains("fa-window-maximize")) {
+            this.classList.remove("fa-window-maximize");
+            this.classList.add("fa-window-minimize");
             TASK_DETAILS_MODAL.children[0].classList.add("w-[100%]");
+            TASK_DETAILS_MODAL.children[0].classList.remove("h-[400px]");
             TASK_DETAILS_MODAL.children[0].classList.add(
                 `h-[${window.innerHeight}px]`
             );
             for (let pre of detailsBlock.getElementsByTagName("pre")) {
                 pre.classList.add(
-                    `h-[${window.innerHeight - TASK_DETAILS_MODAL.querySelector("div.header").clientHeight - detailsBlock.querySelector("div.tab-links").clientHeight - 40}px]`
+                    `h-[${window.innerHeight - TASK_DETAILS_MODAL.querySelector("div.header").clientHeight - detailsBlock.querySelector("div.tab-links").clientHeight}px]`
                 );
             }
         } else {
-            this.classList.remove("fa-compress");
-            this.classList.add("fa-arrows-alt");
+            this.classList.remove("fa-window-minimize");
+            this.classList.add("fa-window-maximize");
             TASK_DETAILS_MODAL.children[0].classList.remove("w-[100%]");
+            TASK_DETAILS_MODAL.children[0].classList.add("h-[400px]");
             TASK_DETAILS_MODAL.children[0].classList.remove(
                 `h-[${window.innerHeight}px]`
             );
@@ -234,7 +240,21 @@ async function showTaskDetails(e) {
 
 function closeTaskDetails() {
     const TASK_DETAILS_MODAL = document.getElementById("task-details-modal");
+    const MENU_BLOCK = TASK_DETAILS_MODAL.querySelector(".menu-actions");
+    const expandButton = MENU_BLOCK.querySelector(".expand");
+
     TASK_DETAILS_MODAL.classList.add("hidden");
+    expandButton.classList.remove("fa-compress");
+    expandButton.classList.add("fa-arrows-alt");
+    TASK_DETAILS_MODAL.children[0].classList.remove("w-[100%]");
+    TASK_DETAILS_MODAL.children[0].classList.remove(
+        `h-[${window.innerHeight}px]`
+    );
+    for (let pre of detailsBlock.getElementsByTagName("pre")) {
+        pre.classList.remove(
+            `h-[${window.innerHeight - TASK_DETAILS_MODAL.querySelector("div.header").clientHeight - detailsBlock.querySelector("div.tab-links").clientHeight - 40}px]`
+        );
+    }
 }
 
 // ---------------------------------- Dag Render -----------------------------------
@@ -582,4 +602,5 @@ async function main() {
         `${window.innerHeight - NAV.clientHeight - DAG_HEADER.clientHeight}px`;
 }
 
+main();
 main();
