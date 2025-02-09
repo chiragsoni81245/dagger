@@ -28,3 +28,8 @@ type DagNode struct {
 	Name  string     `yaml:"name"`
 	Tasks []TaskNode `yaml:"tasks"`
 }
+
+type DagNode_ struct {
+	Name  string     `yaml:"name"`
+	Tasks []TaskNode `yaml:"tasks"`
+}

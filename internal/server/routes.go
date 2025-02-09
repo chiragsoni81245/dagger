@@ -26,6 +26,7 @@ func SetupRoutes(server *types.Server) {
 	{
 		// DAG routes
 		v1.GET("/dags", api.GetDags)
+        v1.GET("/dags/:id/export", api.ExportDAG)
 		v1.POST("/dags", api.CreateDag)
 		v1.POST("/dags/yaml", api.CreateDagWithYAML)
 		v1.POST("/dags/yaml/validate", api.ValidateDagYAML)

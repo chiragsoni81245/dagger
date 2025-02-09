@@ -1,7 +1,10 @@
 package server
 
 import (
+	"archive/zip"
+	"bytes"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -12,7 +15,9 @@ import (
 	"strings"
 
 	"github.com/chiragsoni81245/dagger/internal/models"
+	"github.com/chiragsoni81245/dagger/internal/queue"
 	"github.com/chiragsoni81245/dagger/internal/types"
+	"github.com/chiragsoni81245/dagger/internal/utils"
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
 )
@@ -243,6 +248,176 @@ func (apiC *APIControllers) RunDag(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Dag started running"})
+}
+
+func (apiC *APIControllers) ExportDAG(c *gin.Context) {
+    logger := apiC.Server.Logger
+    db := apiC.Server.DB
+    do := models.DagOperations{Logger: logger, DB: db, EventCh: apiC.Server.EventCh}
+
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+    dag, err := do.GetDagByID(id)
+	if err != nil {
+        if err == sql.ErrNoRows {
+		    c.JSON(http.StatusNotFound, gin.H{"error": "Invalid ID"})
+		    return
+        }
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get dag"})
+		return
+	}
+
+    taskTree := make(map[int][]int)
+    tasks := make(map[int]*types.Task)
+    var rootTask *types.Task
+    for _, task := range dag.Tasks {
+        tasks[task.ID] = &task
+        if task.ParentID == nil {
+            rootTask = &task
+            if _, ok := taskTree[task.ID]; !ok {
+                taskTree[task.ID] = []int{}          
+            } 
+        } else {
+            if _, ok := taskTree[*task.ParentID]; ok {
+                taskTree[*task.ParentID] = append(taskTree[*task.ParentID], task.ID)
+            } else {
+                taskTree[*task.ParentID] = []int{task.ID}
+            }
+        }
+    }
+
+    eo := models.ExecutorOperations{Logger: do.Logger, DB: do.DB}
+    executors, _, err := eo.GetExecutors(1, -1) // We want to fetch all executors so here page =1, and perPage = -1 which is considered infinity
+    if err != nil {
+        logger.Errorf("Error fetching executor details from db: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+        return
+    }
+    executorNames := make(map[int]string)
+    for _, executor := range executors {
+        executorNames[executor.ID] = executor.Name
+    }
+
+
+    var dagNode types.DagNode
+    dagNode.Name = dag.Name
+
+    // Creating Tasks
+    type qElement struct {
+        Node types.Task
+        Parent *types.TaskNode
+    }
+
+    q := &queue.Queue[qElement]{}
+    q.Enqueue(qElement{Node: *rootTask, Parent: nil})
+
+    filesToBeIncluded := make(map[string]types.CodeZipFile)
+
+    for !q.IsEmpty() {
+        ele, _ := q.Dequeue()
+        task := ele.Node
+        childs := []types.TaskNode{}
+
+        // Find Task Code File Hash (we are doing this to remove repeated files) 
+        codeZipFile := types.CodeZipFile{
+            FilePath: fmt.Sprintf("storage/code-files-zip/%d/code.zip", task.ID),
+        }
+        codeFileHash, err := utils.CalculateSHA256(codeZipFile.FilePath)
+        if err != nil {
+            logger.Errorf("Error creating hash for task %d: %v", task.ID, err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+            return
+        }
+        codeZipFile.Name = fmt.Sprintf("%s.zip", codeFileHash)
+        codeZipFile.Hash = codeFileHash 
+        if _, ok := filesToBeIncluded[codeFileHash]; !ok {
+            filesToBeIncluded[codeFileHash] = codeZipFile
+        }
+
+        taskNode := types.TaskNode{
+            Name: task.Name, 
+            ExecutorName: executorNames[task.ExecutorID], 
+            Type: task.Type, 
+            CodeZipFileName: codeZipFile.Name,
+            Childs: &childs,  
+        }
+        var taskNodeDefinition types.TaskDefinition
+        err = json.Unmarshal([]byte(task.Definition), &taskNodeDefinition)
+        if err != nil {
+            logger.Errorf("Error in parsing task definition JSON: %v", err)
+    		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+            return
+        }
+        taskNode.Definition = taskNodeDefinition
+
+        if ele.Parent == nil {
+            dagNode.Tasks = []types.TaskNode{taskNode}
+        } else {
+            *ele.Parent.Childs = append(*ele.Parent.Childs, taskNode)
+        }
+
+        for _, childTaskID := range taskTree[task.ID] {
+            q.Enqueue(qElement{Node: *tasks[childTaskID], Parent: &taskNode})
+        }
+    }
+
+
+    yamlConfig, err := yaml.Marshal(dagNode)
+    if err != nil {
+        logger.Errorf("Error parsing yaml config through DAGNode object: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+        return
+    }
+
+    // Creating a single zip containing YAML config as well as the code zip files for this DAG 
+    zipBuffer := new(bytes.Buffer)
+    zipWriter := zip.NewWriter(zipBuffer)
+    configFile, err := zipWriter.Create("config.yaml")
+    if err != nil {
+        logger.Errorf("Error creating config file in zip: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+        return
+    }
+    _, err = configFile.Write(yamlConfig)
+    if err != nil {
+        logger.Errorf("Error creating config file in zip: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+        return
+    }
+
+    for _, codeZipFile := range filesToBeIncluded {
+        zipFile, err := zipWriter.Create(codeZipFile.Name)
+        if err != nil {
+            logger.Errorf("Error creating %s file in zip: %v", codeZipFile.Name, err)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+            return
+        }
+
+        file, err := os.Open(codeZipFile.FilePath)
+        if err != nil {
+            logger.Errorf("Error opening %s file: ", codeZipFile.FilePath)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+            return
+        }
+
+        // Copy file content into the ZIP entry
+        _, err = io.Copy(zipFile, file)
+        if err != nil {
+            logger.Errorf("Error copying content of %s file into file in zip: ", codeZipFile.FilePath)
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+            return
+        }
+    }
+
+    zipWriter.Close()
+    // Set response headers
+    c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=dag-%d.zip", dag.ID))
+    c.Header("Content-Type", "application/zip")
+    c.Data(http.StatusOK, "application/zip", zipBuffer.Bytes())
 }
 
 

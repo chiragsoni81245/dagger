@@ -254,7 +254,8 @@ func (do *DagOperations) CreateDagWithYAML(dag *types.DagNode, files map[string]
             return -1, err
         }
 
-        for _, child := range task.Childs {
+        if task.Childs == nil { continue }
+        for _, child := range *task.Childs {
             q.Enqueue(qElement{Node: child, ParentId: &taskId})
         }
     }
@@ -351,7 +352,8 @@ func (do *DagOperations) ValidateDagYAML(dag *types.DagNode) types.DagYAMLValida
             }
         }
 
-        for _, child := range task.Childs {
+        if task.Childs == nil { continue }
+        for _, child := range *task.Childs {
             q.Enqueue(qElement{Node: child})
         }
     }

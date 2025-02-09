@@ -25,5 +25,11 @@ type TaskNode struct {
 	Type            string         `yaml:"type"`
 	CodeZipFileName string         `yaml:"code"`
 	Definition      TaskDefinition `yaml:"definition"`
-	Childs          []TaskNode
+    Childs          *[]TaskNode    `yaml:"childs"`
+}
+
+type CodeZipFile struct {
+    Name     string
+    FilePath string
+    Hash     string
 }

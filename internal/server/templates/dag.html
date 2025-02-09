@@ -27,10 +27,13 @@
         <div id="dag-header">
             <div class="flex flex-row justify-end items-center mx-4">
                 <p id="dag-name" class="text-lg font-bold mr-auto text-[#333333]"></p>
-                <button id="run-dag" type="button" class="px-2 py-2 text-lg text-green-600 hover:text-green-700 transition-colors hidden">
+                <button id="run-dag" type="button" class="px-2 py-2 text-lg text-green-600 hover:text-green-700 transition-colors hidden" title="Run DAG">
                     <i class="fa fa-play-circle-o" aria-hidden="true"></i>
                 </button>
-                <button id="delete-dag" type="button" class="px-2 py-2 ml-1 text-lg text-red-600 hover:text-red-700 transition-colors hidden">
+                <a id="export-dag" type="button" href="/api/v1/dags/{{ .ID }}/export" class="px-2 py-2 ml-1 text-lg text-orange-400 hover:text-red-700 transition-colors" title="Export DAG">
+                    <i class="fa fa-download" aria-hidden="true"></i>
+                </a>
+                <button id="delete-dag" type="button" class="px-2 py-2 ml-1 text-lg text-red-600 hover:text-red-700 transition-colors hidden" title="Delete DAG">
                     <i class="fa fa-trash" aria-hidden="true"></i>
                 </button>
             </div>
@@ -87,9 +90,11 @@
         <!--Task Details Modal -->
         <div id="task-details-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
             <div class="bg-white rounded-lg shadow-lg w-2/5 p-6 relative">
-                <div class="flex flex-row">
-                    <h2 class="title text-2xl font-semibold text-gray-800 mb-4">Add Task</h2>
-                    <i id="task-details-close" class="fa fa-times cursor-pointer text-xl text-gray-400 ml-auto"></i>
+                <div class="header flex flex-row">
+                    <h2 class="title text-2xl font-semibold text-gray-800 mb-4">Task Logs</h2>
+                    <div class="menu-actions ml-auto">
+                        <i id="task-details-close" class="fa fa-times cursor-pointer text-xl text-gray-400 mx-2"></i>
+                    </div>
                 </div>
                 <div class="details relative"></div>
             </div>

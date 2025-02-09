@@ -122,6 +122,7 @@ async function showTaskDetails(e) {
         return;
     }
     const TASK_DETAILS_MODAL = document.getElementById("task-details-modal");
+    const MENU_BLOCK = TASK_DETAILS_MODAL.querySelector(".menu-actions");
     TASK_DETAILS_MODAL.classList.remove("hidden");
 
     TASK_DETAILS_MODAL.querySelector("h2.title").textContent =
@@ -137,10 +138,12 @@ async function showTaskDetails(e) {
         return;
     }
 
-    detailsBlock.appendChild(
+    MENU_BLOCK.querySelector(".expand")?.remove();
+    MENU_BLOCK.insertBefore(
         getTemplateToElement(
-            `<i class="expand fa fa-expand cursor-pointer border-2 px-2 py-1 rounded absolute right-1 top-1" aria-hidden="true"></i>`
-        )
+            `<i class="expand fa fa-arrows-alt cursor-pointer text-gray-400 mx-2 rounded" aria-hidden="true"></i>`
+        ),
+        document.getElementById("task-details-close")
     );
     detailsBlock.appendChild(
         getTemplateToElement(`
@@ -166,7 +169,7 @@ async function showTaskDetails(e) {
         detailsBlock.appendChild(
             getTemplateToElement(`
                 <div id="task-log-${logs[i].name}" class="tab-content ${i == 0 ? "" : "hidden"}">
-                    <pre class="bg-gray-100 p-4 overflow-auto h-[300px]">${await getFileContent(logs[i].url)}</pre>
+                    <pre class="bg-gray-100 p-4 overflow-auto h-[100%]">${await getFileContent(logs[i].url)}</pre>
                 </div>
             `)
         );
@@ -175,35 +178,33 @@ async function showTaskDetails(e) {
     const tabLinks = document.querySelectorAll(".tab-link");
     const tabContents = document.querySelectorAll(".tab-content");
 
-    detailsBlock
-        .querySelector("i.expand")
-        .addEventListener("click", function () {
-            if (this.classList.contains("fa-expand")) {
-                this.classList.remove("fa-expand");
-                this.classList.add("fa-compress");
-                detailsBlock.style["position"] = "fixed";
-                detailsBlock.style["inset"] = "0";
-                detailsBlock.style["background-color"] = "white";
-                for (let pre of detailsBlock.getElementsByTagName("pre")) {
-                    pre.classList.remove("h-[300px]");
-                    pre.classList.add(
-                        `h-[${window.innerHeight - detailsBlock.querySelector("div.tab-links").clientHeight}px]`
-                    );
-                }
-            } else {
-                this.classList.remove("fa-compress");
-                this.classList.add("fa-expand");
-                detailsBlock.style["position"] = "relative";
-                delete detailsBlock.style["inset"];
-                delete detailsBlock.style["background-color"];
-                for (let pre of detailsBlock.getElementsByTagName("pre")) {
-                    pre.classList.remove(
-                        `h-[${window.innerHeight - detailsBlock.querySelector("div.tab-links").clientHeight}px]`
-                    );
-                    pre.classList.add("h-[300px]");
-                }
+    MENU_BLOCK.querySelector(".expand").addEventListener("click", function () {
+        if (this.classList.contains("fa-arrows-alt")) {
+            this.classList.remove("fa-arrows-alt");
+            this.classList.add("fa-compress");
+            TASK_DETAILS_MODAL.children[0].classList.add("w-[100%]");
+            TASK_DETAILS_MODAL.children[0].classList.add(
+                `h-[${window.innerHeight}px]`
+            );
+            for (let pre of detailsBlock.getElementsByTagName("pre")) {
+                pre.classList.add(
+                    `h-[${window.innerHeight - TASK_DETAILS_MODAL.querySelector("div.header").clientHeight - detailsBlock.querySelector("div.tab-links").clientHeight - 40}px]`
+                );
             }
-        });
+        } else {
+            this.classList.remove("fa-compress");
+            this.classList.add("fa-arrows-alt");
+            TASK_DETAILS_MODAL.children[0].classList.remove("w-[100%]");
+            TASK_DETAILS_MODAL.children[0].classList.remove(
+                `h-[${window.innerHeight}px]`
+            );
+            for (let pre of detailsBlock.getElementsByTagName("pre")) {
+                pre.classList.remove(
+                    `h-[${window.innerHeight - TASK_DETAILS_MODAL.querySelector("div.header").clientHeight - detailsBlock.querySelector("div.tab-links").clientHeight - 40}px]`
+                );
+            }
+        }
+    });
 
     tabLinks.forEach((link) => {
         link.addEventListener("click", () => {
