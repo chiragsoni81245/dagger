@@ -13,15 +13,11 @@ type Config struct {
 		Name     string `mapstructure:"name"`
 	} `mapstructure:"database"`
 
-	Server struct {
-		Port     int    `mapstructure:"port"`
-		LogLevel string `mapstructure:"log_level"`
-	} `mapstructure:"server"`
-
-	App struct {
-		Env   string `mapstructure:"env"`
-		Debug bool   `mapstructure:"debug"`
-	} `mapstructure:"app"`
+    Server struct {
+        Port           int    `mapstructure:"port"`
+        LogLevel       string `mapstructure:"log_level"`
+        MigrationsPath string `mapstructure:"migrations_path"`
+    } `mapstructure:"server"`
 }
 
 func GetConfig(configPath string) (*Config, error){

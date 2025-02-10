@@ -15,7 +15,11 @@ Dagger is a powerful workflow orchestration tool, similar to Apache Airflow, des
 
 ## Installation
 
-### Install from Source Code
+### Download Binary
+
+1. Download binary from this [Dagger Binary](https://github.com/chiragsoni81245/dagger)
+
+### Build from source code
 
 1. Install [Golang](https://go.dev/dl/).
 2. Clone the repository:
@@ -34,15 +38,21 @@ Dagger is a powerful workflow orchestration tool, similar to Apache Airflow, des
 
 ## Usage
 
+### Bootstrap Database
+
+```sh
+dagger migrate up --config config.yaml
+```
+
 ### Starting the Server
 
 To launch the Dagger server, run the following command:
 
 ```sh
-./bin/dagger --config config.yaml
+dagger start --config config.yaml
 ```
 
-### Configuration File (`config.yaml`)
+### Configuration File
 
 The `config.yaml` file should be structured as follows:
 
@@ -57,6 +67,20 @@ database:
 server:
     port: <port on which server is running>
     log_level: <logging level>
+```
+
+### How to reset database
+
+Run this command tear down database content
+
+```sh
+dagger migrate down --config config.yaml
+```
+
+Now bootstrap database with this command
+
+```sh
+dagger migrate up --config config.yaml
 ```
 
 ## Dependencies
