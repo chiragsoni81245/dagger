@@ -24,9 +24,9 @@ type Config struct {
 	} `mapstructure:"app"`
 }
 
-func GetConfig() (*Config, error){
+func GetConfig(configPath string) (*Config, error){
 	// Set the path to the configuration file
-	viper.SetConfigFile("config.yaml")
+	viper.SetConfigFile(configPath)
 
 	// Read the configuration file
 	err := viper.ReadInConfig()

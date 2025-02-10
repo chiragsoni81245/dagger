@@ -13,16 +13,7 @@ import (
 )
 
 
-func RunDag(logger *logrus.Logger, eventCh chan types.Event, id int) error{
-    var err error
-
-    // Generate application configuration
-    config, err := config.GetConfig()
-    if err != nil {
-        logger.Error(err)
-        return err
-    }
-
+func RunDag(config *config.Config, logger *logrus.Logger, eventCh chan types.Event, id int) (err error) {
     db, err := database.GetDB(config) 
     if err != nil {
         logger.Error(err)

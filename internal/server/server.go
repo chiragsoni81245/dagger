@@ -72,6 +72,7 @@ func NewServer(config *config.Config) (*types.Server, error) {
 	eventCh := make(chan types.Event)
 
 	server := types.Server{
+        Config:             config,
 		Logger:             logger,
 		DB:                 db,
 		Router:             r,

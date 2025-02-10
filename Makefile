@@ -8,7 +8,7 @@ build:
 	@go build -o bin/dagger cmd/dagger/main.go
 
 run: build
-	@./bin/dagger
+	@./bin/dagger $(ARGS)
 
 test:
 	@go test ./... -v --race

@@ -226,7 +226,7 @@ func (apiC *APIControllers) DeleteDag(c *gin.Context) {
 func (apiC *APIControllers) RunDag(c *gin.Context) {
     logger := apiC.Server.Logger
     db := apiC.Server.DB
-    do := models.DagOperations{Logger: logger, DB: db, EventCh: apiC.Server.EventCh}
+    do := models.DagOperations{Logger: logger, DB: db, Server: apiC.Server}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -253,7 +253,7 @@ func (apiC *APIControllers) RunDag(c *gin.Context) {
 func (apiC *APIControllers) ExportDAG(c *gin.Context) {
     logger := apiC.Server.Logger
     db := apiC.Server.DB
-    do := models.DagOperations{Logger: logger, DB: db, EventCh: apiC.Server.EventCh}
+    do := models.DagOperations{Logger: logger, DB: db, Server: apiC.Server}
 
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
